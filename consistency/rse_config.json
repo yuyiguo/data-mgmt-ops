@@ -1,0 +1,137 @@
+{
+    "CERN_PDUNE_CASTOR": {
+        "lfn2pfn_algorithm": "DUNE",
+        "is_deterministic": false,
+        "rse_type": "TAPE"
+    },
+    "CERN_PDUNE_EOS": {
+        "lfn2pfn_algorithm": "DUNE",
+        "is_deterministic": false,
+        "rse_type": "DISK"
+    },
+    "DUNE_CA_SFU": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    },
+    "DUNE_CERN_EOS": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    },
+    "DUNE_CERN_EOS_NP_BUFFER": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    },
+    "DUNE_ES_PIC": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    },
+    "DUNE_FR_CCIN2P3_DISK": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    },
+    "DUNE_FR_CCIN2P3_TAPE": {
+        "lfn2pfn_algorithm": "DUNE",
+        "is_deterministic": false,
+        "rse_type": "TAPE"
+    },
+    "DUNE_IN_TIFR": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    },
+    "DUNE_IT_INFN_CNAF": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    },
+    "DUNE_UK_GLASGOW": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    },
+    "DUNE_UK_LANCASTER_CEPH": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    },
+    "DUNE_UK_MANCHESTER_CEPH": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    },
+    "DUNE_US_BNL_SDCC": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    },
+    "DUNE_US_FNAL_DISK_STAGE": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    },
+    "FNAL_DCACHE": {
+        "lfn2pfn_algorithm": "DUNE",
+        "is_deterministic": false,
+        "rse_type": "TAPE"
+    },
+    "FNAL_DCACHE_STAGING": {
+        "lfn2pfn_algorithm": "DUNE",
+        "is_deterministic": false,
+        "rse_type": "DISK"
+    },
+    "FNAL_DCACHE_TEST": {
+        "lfn2pfn_algorithm": "DUNE",
+        "is_deterministic": false,
+        "rse_type": "DISK"
+    },
+    "FNAL_MISC_TAPE": {
+        "lfn2pfn_algorithm": "DUNE",
+        "is_deterministic": false,
+        "rse_type": "TAPE"
+    },
+    "NIKHEF": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    },
+    "PRAGUE": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    },
+    "QMUL": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    },
+    "RAL_ANTARES": {
+        "lfn2pfn_algorithm": "DUNE",
+        "is_deterministic": false,
+        "rse_type": "TAPE"
+    },
+    "RAL_ECHO": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    },
+    "RAL-PP": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    },
+    "SURFSARA": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    },
+    "T3_US_NERSC": {
+        "lfn2pfn_algorithm": "hash",
+        "is_deterministic": true,
+        "rse_type": "DISK"
+    }
+}

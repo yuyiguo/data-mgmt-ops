@@ -1,0 +1,29 @@
+# Secrets and credentials
+etc/.secrets/*
+!etc/.secrets/.gitkeep
+.token.tmp
+.setup.tmp
+
+# Project Instructions (requested)
+GEMINI.md
+
+# Local data and logs
+check-output/
+db-dump/
+gfal-downloads/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

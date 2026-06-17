@@ -1,0 +1,4 @@
+scope,name,bytes,dataset
+fardet-hd,anue_dune10kt_1x2x6_1378_632_20230824T110401Z_gen_g4_detsim_hitreco__20240406T005713Z_reco2_ana.root,1048576,prod_dataset_1
+fardet-hd,missing_file.root,524288,prod_dataset_1
+fardet-hd,lost_dataset2_file.root,100,prod_dataset_2
