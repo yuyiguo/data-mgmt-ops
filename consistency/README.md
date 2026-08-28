@@ -1,4 +1,5 @@
 # DUNE Rucio Consistency Checker
+Yuyi Guo Aug. 28, 2026
 
 This tool compares Rucio's catalog (Database) against physical storage (Site Dumps) to identify inconsistencies in the DUNE data environment.
 
