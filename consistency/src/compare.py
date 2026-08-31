@@ -1,5 +1,124 @@
 from datetime import datetime, timezone
 
+def _to_gb(value):
+    return round(value / (1024.0 ** 3), 6) if value is not None else 0.0
+
+
+def compare_summary_only(catalog_data, site_entries, rse=None, timestamp=None):
+    """
+    Computes the same top-level stats as the full comparator while streaming
+    site dump entries and avoiding detailed discrepancy lists.
+    """
+    if timestamp is None:
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    catalog_keys = set(catalog_data.keys())
+    site_keys = set()
+    dark_first_bytes = {}
+    mismatched_keys = set()
+
+    total_site_bytes = 0
+    total_site_unknown_count = 0
+    total_size_mismatch_count = 0
+    total_checksum_mismatch_count = 0
+    total_size_mismatch_bytes = 0
+    total_checksum_mismatch_bytes = 0
+
+    for is_valid, site_replica in site_entries:
+        if not is_valid:
+            total_site_unknown_count += 1
+            continue
+
+        key = (site_replica['scope'], site_replica['name'])
+        site_keys.add(key)
+
+        site_bytes = site_replica.get('bytes')
+        if site_bytes is not None:
+            total_site_bytes += site_bytes
+
+        if key not in catalog_data:
+            if key not in dark_first_bytes:
+                dark_first_bytes[key] = site_bytes
+            continue
+
+        catalog_entry = catalog_data[key]
+        catalog_bytes = catalog_entry.get('bytes')
+        catalog_adler32 = catalog_entry.get('adler32')
+        site_adler32 = site_replica.get('adler32')
+
+        if site_bytes is not None and catalog_bytes is not None and site_bytes != catalog_bytes:
+            total_size_mismatch_count += 1
+            total_size_mismatch_bytes += catalog_bytes
+            mismatched_keys.add(key)
+
+        if site_adler32 is not None and catalog_adler32 is not None:
+            c_adler = str(catalog_adler32).strip().lower()
+            s_adler = str(site_adler32).strip().lower()
+            if c_adler != s_adler:
+                total_checksum_mismatch_count += 1
+                total_checksum_mismatch_bytes += catalog_bytes or 0
+                mismatched_keys.add(key)
+
+    missing_data_keys = catalog_keys - site_keys
+    total_catalog_count = len(catalog_keys)
+    total_missing_count = len(missing_data_keys)
+    total_catalog_bytes = sum(
+        catalog_data[k]['bytes']
+        for k in catalog_data
+        if catalog_data[k]['bytes'] is not None
+    )
+    total_missing_bytes = sum(
+        catalog_data[k]['bytes']
+        for k in missing_data_keys
+        if catalog_data[k]['bytes'] is not None
+    )
+    total_dark_bytes = sum(
+        value
+        for value in dark_first_bytes.values()
+        if value is not None
+    )
+
+    total_present_files = total_catalog_count - total_missing_count
+    total_present_bytes = max(0, total_catalog_bytes - total_missing_bytes)
+    total_consistent_files = total_catalog_count - total_missing_count - len(mismatched_keys)
+
+    mismatched_bytes = sum(catalog_data[k].get('bytes', 0) for k in mismatched_keys)
+    total_consistent_bytes = max(0, total_catalog_bytes - total_missing_bytes - mismatched_bytes)
+
+    percentage_catalog_present_files = (total_present_files / total_catalog_count * 100) if total_catalog_count > 0 else 100.0
+    percentage_catalog_present_size = (total_present_bytes / total_catalog_bytes * 100) if total_catalog_bytes > 0 else 100.0
+    percentage_catalog_consistent_files = (total_consistent_files / total_catalog_count * 100) if total_catalog_count > 0 else 100.0
+    percentage_catalog_consistent_size = (total_consistent_bytes / total_catalog_bytes * 100) if total_catalog_bytes > 0 else 100.0
+
+    total_site_total_count = len(site_keys) + total_site_unknown_count
+    percentage_site_known_files = (len(site_keys) / total_site_total_count * 100) if total_site_total_count > 0 else 100.0
+
+    return {
+        '@timestamp': timestamp,
+        'rse': rse or "UNKNOWN",
+        'stats': {
+            'total_catalog_file_count': total_catalog_count,
+            'total_catalog_size_GB': _to_gb(total_catalog_bytes),
+            'total_site_valid_file_count': len(site_keys),
+            'total_site_valid_size_GB': _to_gb(total_site_bytes),
+            'total_site_unknown_file_count': total_site_unknown_count,
+            'total_dark_file_count': len(dark_first_bytes),
+            'total_dark_size_GB': _to_gb(total_dark_bytes),
+            'total_missing_file_count': total_missing_count,
+            'total_missing_size_GB': _to_gb(total_missing_bytes),
+            'total_size_mismatch_file_count': total_size_mismatch_count,
+            'total_size_mismatch_size_GB': _to_gb(total_size_mismatch_bytes),
+            'total_checksum_mismatch_file_count': total_checksum_mismatch_count,
+            'total_checksum_mismatch_size_GB': _to_gb(total_checksum_mismatch_bytes),
+            'catalog_present_files': round(percentage_catalog_present_files, 2),
+            'catalog_present_size': round(percentage_catalog_present_size, 2),
+            'catalog_consistent_files': round(percentage_catalog_consistent_files, 2),
+            'catalog_consistent_size': round(percentage_catalog_consistent_size, 2),
+            'site_known_files': round(percentage_site_known_files, 2)
+        }
+    }
+
+
 class ConsistencyComparator:
     def __init__(self, catalog_data, valid_site_replicas, unknown_site_files):
         """
@@ -74,9 +193,6 @@ class ConsistencyComparator:
                 missing_stats_by_dataset[stats_key]['count'] += 1
                 missing_stats_by_dataset[stats_key]['bytes'] += size
 
-        # Helper to convert bytes to GB
-        to_gb = lambda b: round(b / (1024.0 ** 3), 6) if b is not None else 0.0
-
         # Format missing_stats for JSON output
         formatted_missing_stats = []
         for (scope, dataset), stats in missing_stats_by_dataset.items():
@@ -84,7 +200,7 @@ class ConsistencyComparator:
                 'scope': scope,
                 'dataset': dataset,
                 'missing_file_count': stats['count'],
-                'missing_size_GB': to_gb(stats['bytes'])
+                'missing_size_GB': _to_gb(stats['bytes'])
             }
             formatted_missing_stats.append(add_meta(entry))
 
@@ -178,18 +294,18 @@ class ConsistencyComparator:
             'missing_stats_by_dataset': formatted_missing_stats,
             'stats': {
                 'total_catalog_file_count': total_catalog_count,
-                'total_catalog_size_GB': to_gb(total_catalog_bytes),
+                'total_catalog_size_GB': _to_gb(total_catalog_bytes),
                 'total_site_valid_file_count': len(site_keys),
-                'total_site_valid_size_GB': to_gb(total_site_bytes),
+                'total_site_valid_size_GB': _to_gb(total_site_bytes),
                 'total_site_unknown_file_count': total_site_unknown_count,
                 'total_dark_file_count': len(dark_files),
-                'total_dark_size_GB': to_gb(total_dark_bytes),
+                'total_dark_size_GB': _to_gb(total_dark_bytes),
                 'total_missing_file_count': total_missing_count,
-                'total_missing_size_GB': to_gb(total_missing_bytes),
+                'total_missing_size_GB': _to_gb(total_missing_bytes),
                 'total_size_mismatch_file_count': total_size_mismatch_count,
-                'total_size_mismatch_size_GB': to_gb(total_size_mismatch_bytes),
+                'total_size_mismatch_size_GB': _to_gb(total_size_mismatch_bytes),
                 'total_checksum_mismatch_file_count': total_checksum_mismatch_count,
-                'total_checksum_mismatch_size_GB': to_gb(total_checksum_mismatch_bytes),
+                'total_checksum_mismatch_size_GB': _to_gb(total_checksum_mismatch_bytes),
                 'catalog_present_files': round(percentage_catalog_present_files, 2),
                 'catalog_present_size': round(percentage_catalog_present_size, 2),
                 'catalog_consistent_files': round(percentage_catalog_consistent_files, 2),

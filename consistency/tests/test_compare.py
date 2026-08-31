@@ -3,9 +3,10 @@ import os
 import tempfile
 import csv
 import json
+import gzip
 from src.site_parser import SiteDumpParser
 from src.catalog_ingester import CatalogIngester
-from src.compare import ConsistencyComparator
+from src.compare import ConsistencyComparator, compare_summary_only
 
 class TestConsistencyChecker(unittest.TestCase):
 
@@ -89,6 +90,28 @@ class TestConsistencyChecker(unittest.TestCase):
         self.assertEqual(valid[0]['bytes'], 44119078)
         self.assertEqual(valid[0]['adler32'], "23015cb1")
 
+    def test_site_dump_parser_gzip_file(self):
+        dump_content = (
+            "/cephfs/grid/dune/ehn1-beam-np02/be/7e/"
+            "H2_v27c_1GeV_001207_20260622T111356Z_001207.root\t44119078\t23015cb1\n"
+        )
+        dump_path = os.path.join(self.temp_dir.name, "site_dump_prefixed_hash.txt.gz")
+        with gzip.open(dump_path, "wt") as f:
+            f.write(dump_content)
+
+        config_path = os.path.join(self.temp_dir.name, "rse_config.json")
+        with open(config_path, "w") as f:
+            json.dump({"TEST_RSE": {"lfn2pfn_algorithm": "hash", "is_deterministic": True}}, f)
+
+        parser = SiteDumpParser(dump_path, "TEST_RSE", config_path)
+        valid, unknown = parser.parse()
+
+        self.assertEqual(len(valid), 1)
+        self.assertEqual(len(unknown), 0)
+        self.assertEqual(valid[0]['scope'], "ehn1-beam-np02")
+        self.assertEqual(valid[0]['bytes'], 44119078)
+        self.assertEqual(valid[0]['adler32'], "23015cb1")
+
     def test_catalog_ingester(self):
         csv_path = os.path.join(self.temp_dir.name, "catalog_dump.csv")
         with open(csv_path, "w", newline="") as f:
@@ -161,6 +184,28 @@ class TestConsistencyChecker(unittest.TestCase):
         self.assertEqual(results["checksum_mismatch"][0]["name"], "file_checksum_mismatch.root")
         self.assertEqual(results["checksum_mismatch"][0]["site_adler32"], "different")
         self.assertEqual(results["checksum_mismatch"][0]["catalog_adler32"], "match123")
+
+    def test_summary_only_matches_full_stats(self):
+        catalog = {
+            ("scope1", "file_match.root"): {"bytes": 1000, "adler32": "match123", "datasets": ["dataset1"]},
+            ("scope1", "file_size_mismatch.root"): {"bytes": 1000, "adler32": "match123", "datasets": ["dataset1"]},
+            ("scope1", "file_checksum_mismatch.root"): {"bytes": 1000, "adler32": "match123", "datasets": ["dataset1"]},
+            ("scope1", "file_missing.root"): {"bytes": 500, "adler32": "missing1", "datasets": ["dataset2"]}
+        }
+        site_replicas = [
+            {"scope": "scope1", "name": "file_match.root", "path": "/path/file_match.root", "bytes": 1000, "adler32": "match123"},
+            {"scope": "scope1", "name": "file_size_mismatch.root", "path": "/path/file_size_mismatch.root", "bytes": 9999, "adler32": "match123"},
+            {"scope": "scope1", "name": "file_checksum_mismatch.root", "path": "/path/file_checksum_mismatch.root", "bytes": 1000, "adler32": "different"},
+            {"scope": "scope1", "name": "file_dark.root", "path": "/path/file_dark.root", "bytes": 2000, "adler32": "dark123"}
+        ]
+        unknown = [{"path": "/path/invalid_path", "reason": "Malformed Path"}]
+        site_entries = [(True, entry) for entry in site_replicas] + [(False, entry) for entry in unknown]
+
+        full = ConsistencyComparator(catalog, site_replicas, unknown).compare("TEST_RSE")
+        summary_only = compare_summary_only(catalog, iter(site_entries), "TEST_RSE")
+
+        self.assertEqual(summary_only["stats"], full["stats"])
+        self.assertEqual(summary_only["rse"], "TEST_RSE")
 
 if __name__ == "__main__":
     unittest.main()

@@ -12,6 +12,7 @@ AUDIT_LOG="${CHECKER_AUDIT_LOG:-$LOG_ROOT/monthly_checker.log}"
 STABILITY_WAIT_SECONDS="${DUMP_STABILITY_WAIT_SECONDS:-300}"
 PYTHON_BIN="${CHECKER_PYTHON:-python3}"
 ALERT_EMAIL="${CHECKER_ALERT_EMAIL:-}"
+MONTHLY_SUMMARY_ONLY="${CHECKER_MONTHLY_SUMMARY_ONLY:-1}"
 
 mkdir -p "$LOG_ROOT" "$(dirname "$STATE_FILE")"
 
@@ -137,9 +138,16 @@ for item_file in "$WORK_DIR"/item_*.json; do
         continue
     fi
 
-    if ! run_stage "$rse" "check" "$run_log_dir/check.log" \
-        ./run_check.sh "$rse" "$local_path" "$run_date"; then
-        continue
+    if [ "$MONTHLY_SUMMARY_ONLY" = "1" ]; then
+        if ! run_stage "$rse" "check" "$run_log_dir/check.log" \
+            env CHECKER_SUMMARY_ONLY=1 ./run_check.sh "$rse" "$local_path" "$run_date"; then
+            continue
+        fi
+    else
+        if ! run_stage "$rse" "check" "$run_log_dir/check.log" \
+            ./run_check.sh "$rse" "$local_path" "$run_date"; then
+            continue
+        fi
     fi
 
     export_args=()

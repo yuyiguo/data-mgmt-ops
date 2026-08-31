@@ -4,7 +4,7 @@ import os
 import sys
 from src.site_parser import SiteDumpParser
 from src.catalog_ingester import CatalogIngester
-from src.compare import ConsistencyComparator
+from src.compare import ConsistencyComparator, compare_summary_only
 
 def format_bytes(size):
     """Formats bytes into human-readable strings."""
@@ -22,6 +22,7 @@ def main():
     parser.add_argument("--rse-config", default="rse_config.json", help="Path to the RSE configuration file")
     parser.add_argument("--output", default="discrepancies.json", help="Output file for detailed discrepancies")
     parser.add_argument("--summary", default=None, help="Output file for stats-only summary JSON (defaults to summary.json next to output)")
+    parser.add_argument("--summary-only", action="store_true", help="Only write summary.json; avoids large detailed results for big dumps")
     
     args = parser.parse_args()
 
@@ -35,20 +36,26 @@ def main():
                 print(f"Error: {args.rse} is a TAPE RSE. Consistency checks for tape are currently disabled.")
                 sys.exit(0)
 
-    print(f"Loading site dump: {args.site_dump}")
     site_parser = SiteDumpParser(args.site_dump, args.rse, args.rse_config)
-    valid_replicas, unknown_files = site_parser.parse()
-    print(f"Algorithm: {site_parser.algorithm}")
-    print(f"Found {len(valid_replicas)} valid physical replicas and {len(unknown_files)} unknown files.")
 
     print(f"Loading catalog dump: {args.db_dump}")
     catalog_ingester = CatalogIngester(args.db_dump)
     catalog_data = catalog_ingester.ingest()
     print(f"Found {len(catalog_data)} catalog entries.")
 
-    print("Comparing...")
-    comparator = ConsistencyComparator(catalog_data, valid_replicas, unknown_files)
-    results = comparator.compare(rse=args.rse)
+    if args.summary_only:
+        print(f"Streaming site dump for summary-only check: {args.site_dump}")
+        print(f"Algorithm: {site_parser.algorithm}")
+        results = compare_summary_only(catalog_data, site_parser.iter_entries(), rse=args.rse)
+    else:
+        print(f"Loading site dump: {args.site_dump}")
+        valid_replicas, unknown_files = site_parser.parse()
+        print(f"Algorithm: {site_parser.algorithm}")
+        print(f"Found {len(valid_replicas)} valid physical replicas and {len(unknown_files)} unknown files.")
+
+        print("Comparing...")
+        comparator = ConsistencyComparator(catalog_data, valid_replicas, unknown_files)
+        results = comparator.compare(rse=args.rse)
 
     print(f"Results:")
     print(f"  Dark Files (correct path, not in DB): {results['stats']['total_dark_file_count']} ({results['stats'].get('total_dark_size_GB', 0.0):.3f} GB)")
@@ -63,10 +70,13 @@ def main():
     print(f"  Catalog Consistency (Fully Match Files): {results['stats'].get('catalog_consistent_files', 0.0):.2f}%")
     print(f"  Catalog Consistency (Fully Match Size): {results['stats'].get('catalog_consistent_size', 0.0):.2f}%")
 
-    # 1. Save detailed report (results.json)
-    with open(args.output, 'w') as f:
-        json.dump(results, f, indent=2)
-    print(f"Full detailed results saved to {args.output}")
+    if args.summary_only:
+        print("Detailed results skipped because --summary-only was set")
+    else:
+        # 1. Save detailed report (results.json)
+        with open(args.output, 'w') as f:
+            json.dump(results, f, indent=2)
+        print(f"Full detailed results saved to {args.output}")
 
     # 2. Save lightweight stats-only summary report (summary.json)
     summary_path = args.summary

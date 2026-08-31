@@ -1,6 +1,7 @@
 import os
 import hashlib
 import json
+import gzip
 
 class SiteDumpParser:
     def __init__(self, dump_path, rse_name, rse_config_path="rse_config.json"):
@@ -31,6 +32,50 @@ class SiteDumpParser:
             if path.startswith(prefix):
                 return path[len(prefix):]
         return path
+
+    def _open_dump(self):
+        if self.dump_path.endswith(".gz"):
+            return gzip.open(self.dump_path, "rt")
+        return open(self.dump_path, "r")
+
+    def _parse_line(self, line):
+        line = line.strip()
+        if not line:
+            return None
+
+        if '\t' in line:
+            parts = line.split('\t')
+        else:
+            parts = line.split()
+
+        path = parts[0] if parts else ''
+        size = None
+        adler32 = None
+
+        if len(parts) > 1:
+            try:
+                size = int(parts[1])
+            except ValueError:
+                pass
+        if len(parts) > 2:
+            adler32 = parts[2]
+            if adler32.upper() == 'N/A':
+                adler32 = None
+
+        is_valid, scope, name, reason = self.validate_path(path)
+
+        entry = {
+            'scope': scope,
+            'name': name,
+            'path': path,
+            'bytes': size,
+            'adler32': adler32
+        }
+
+        if not is_valid:
+            entry['reason'] = reason
+
+        return is_valid, entry
 
     def validate_path(self, path):
         """
@@ -85,48 +130,27 @@ class SiteDumpParser:
         valid_replicas = []
         unknown_files = []
 
-        with open(self.dump_path, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                
-                if '\t' in line:
-                    parts = line.split('\t')
-                else:
-                    parts = line.split()
-                
-                path = parts[0] if parts else ''
-                size = None
-                adler32 = None
-                
-                if len(parts) > 1:
-                    try:
-                        size = int(parts[1])
-                    except ValueError:
-                        pass
-                if len(parts) > 2:
-                    adler32 = parts[2]
-                    if adler32.upper() == 'N/A':
-                        adler32 = None
-                
-                is_valid, scope, name, reason = self.validate_path(path)
-                
-                entry = {
-                    'scope': scope,
-                    'name': name,
-                    'path': path,
-                    'bytes': size,
-                    'adler32': adler32
-                }
-
-                if is_valid:
-                    valid_replicas.append(entry)
-                else:
-                    entry['reason'] = reason
-                    unknown_files.append(entry)
+        for is_valid, entry in self.iter_entries():
+            if is_valid:
+                valid_replicas.append(entry)
+            else:
+                unknown_files.append(entry)
                     
         return valid_replicas, unknown_files
+
+    def iter_entries(self):
+        """
+        Streams parsed site dump entries.
+        Yields (is_valid, entry) without keeping the whole site dump in memory.
+        """
+        if not os.path.exists(self.dump_path):
+            raise FileNotFoundError(f"Dump file not found: {self.dump_path}")
+
+        with self._open_dump() as f:
+            for line in f:
+                parsed = self._parse_line(line)
+                if parsed is not None:
+                    yield parsed
 
 if __name__ == "__main__":
     import sys

@@ -104,6 +104,12 @@ PYTHONPATH=. python3 src/db_dump.py <RSE_NAME> <OUTPUT_CSV> --fetch-size 5000
 python3 main.py --rse <RSE_NAME> --site-dump /path/to/site_dump.txt --db-dump /path/to/rucio_db.csv --output results.json
 ```
 
+For large dumps where you only need `summary.json` for Landscape metrics, use summary-only mode. This streams the site dump and skips the detailed `results.json` discrepancy lists:
+
+```bash
+python3 main.py --rse <RSE_NAME> --site-dump /path/to/site_dump.txt --db-dump /path/to/rucio_db.csv --summary summary.json --summary-only
+```
+
 ### 3. Export to Landscape
 The checker output can be exported to Landscape as OpenTelemetry data without rerunning the check:
 
@@ -132,7 +138,7 @@ RAL_ECHO https://webdav.echo.stfc.ac.uk:1094/dune:/protodune/dumps/dump_latest g
 Modes:
 
 *   `list`: use `gfal-ls` on `remote_url`, then `gfal-stat` candidate dump files.
-*   `latest`: do not list; use `gfal-stat` directly on `remote_url` and copy it locally as `dump_YYYYMMDD` based on the remote creation time.
+*   `latest`: do not list; use `gfal-stat` directly on `remote_url` and copy it locally as `dump_YYYYMMDD` based on the remote creation or modification time.
 
 The automation tracks processed remote metadata in `state/rse_dumps.json`. A dump is treated as new when the remote path, size, creation time, or modification time differs from the saved state. By default, the selected remote dump is stat'ed twice with a 300 second wait, and it is skipped if metadata changes during that interval.
 
@@ -145,6 +151,12 @@ source setup_landscape_otlp.sh
 ```
 
 That performs the same steps as the cron job for every RSE in `rse_url.txt`: refresh a GFAL token, discover new dumps, copy new dumps locally, run the checker, export summary metrics to Landscape, and update `state/rse_dumps.json` after success.
+
+Monthly automation runs the checker with `CHECKER_SUMMARY_ONLY=1` by default. This is the intended mode for the metric dashboard because it avoids keeping millions of detailed discrepancy records in memory. To force full `results.json` generation from the monthly script, set:
+
+```bash
+export CHECKER_MONTHLY_SUMMARY_ONLY=0
+```
 
 Before running on a new server checkout, create the local DB secrets file. It is intentionally ignored by Git:
 
@@ -207,6 +219,7 @@ Useful environment variables:
 export DUMP_STABILITY_WAIT_SECONDS=300
 export CHECKER_ALERT_EMAIL=you@example.org
 export CHECKER_PYTHON=/Users/yuyi/venv312/bin/python3
+export CHECKER_MONTHLY_SUMMARY_ONLY=1
 ```
 
 `setup_landscape_otlp.sh` defines `setup_gfal_token`, but does not refresh a token just by being sourced. The monthly automation refreshes the short-lived DUNE production token immediately before GFAL discovery and before each GFAL copy:

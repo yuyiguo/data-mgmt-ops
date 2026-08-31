@@ -38,6 +38,11 @@ RSE_LOWER=$(echo "$RSE" | tr '[:upper:]' '[:lower:]')
 DB_DUMP_FILE="$DB_DUMP_DIR/${RSE_LOWER}-db-$DATE.csv"
 RESULTS_FILE="$OUTPUT_DIR/results.json"
 SUMMARY_FILE="$OUTPUT_DIR/summary.json"
+MAIN_ARGS=()
+
+if [ "${CHECKER_SUMMARY_ONLY:-0}" = "1" ]; then
+    MAIN_ARGS+=(--summary-only)
+fi
 
 # 1. Create necessary directories
 echo "--- Preparing Directories ---"
@@ -62,7 +67,8 @@ $PYTHON_BIN main.py \
     --site-dump "$SITE_DUMP" \
     --db-dump "$DB_DUMP_FILE" \
     --output "$RESULTS_FILE" \
-    --summary "$SUMMARY_FILE"
+    --summary "$SUMMARY_FILE" \
+    "${MAIN_ARGS[@]}"
 
 if [ $? -ne 0 ]; then
     echo "Error: Consistency check failed."
@@ -70,5 +76,9 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "--- Process Complete ---"
-echo "Detailed results saved to: $RESULTS_FILE"
+if [ "${CHECKER_SUMMARY_ONLY:-0}" = "1" ]; then
+    echo "Detailed results skipped because CHECKER_SUMMARY_ONLY=1"
+else
+    echo "Detailed results saved to: $RESULTS_FILE"
+fi
 echo "Stats summary saved to: $SUMMARY_FILE"
