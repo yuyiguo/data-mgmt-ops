@@ -7,6 +7,7 @@ import sys
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
+from typing import Optional
 from zoneinfo import ZoneInfo
 
 
@@ -33,9 +34,9 @@ class DumpInfo:
     local_path: str
     basename: str
     run_date: str
-    size: int | None
-    created_at: str | None
-    modified_at: str | None
+    size: Optional[int]
+    created_at: Optional[str]
+    modified_at: Optional[str]
 
 
 def parse_config(path):
