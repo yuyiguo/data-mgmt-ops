@@ -21,6 +21,7 @@ class CatalogIngester:
                 scope = row.get('scope')
                 name = row.get('name')
                 size = row.get('bytes')
+                adler32 = row.get('adler32')
                 dataset = row.get('dataset', 'UnknownDataset')
                 
                 if scope and name:
@@ -28,6 +29,7 @@ class CatalogIngester:
                     if key not in catalog:
                         catalog[key] = {
                             'bytes': int(size) if size and str(size).isdigit() else 0,
+                            'adler32': adler32,
                             'datasets': set()
                         }
                     catalog[key]['datasets'].add(dataset)

@@ -15,10 +15,15 @@ DATE=$3
 
 # Project paths
 PROJECT_ROOT=$(pwd)
-# Default to venv if it exists, otherwise use system python3
-VENV_PYTHON="$PROJECT_ROOT/../../venv312/bin/python3"
-if [ -f "$VENV_PYTHON" ]; then
-    PYTHON_BIN="$VENV_PYTHON"
+# Default to venv if it exists, otherwise check common locations, otherwise use system python3
+if [ -f "$PROJECT_ROOT/../../venv312/bin/python3" ]; then
+    PYTHON_BIN="$PROJECT_ROOT/../../venv312/bin/python3"
+elif [ -f "$PROJECT_ROOT/../../../venv312/bin/python3" ]; then
+    PYTHON_BIN="$PROJECT_ROOT/../../../venv312/bin/python3"
+elif [ -f "/Users/yuyi/venv312/bin/python3" ]; then
+    PYTHON_BIN="/Users/yuyi/venv312/bin/python3"
+elif [ -f "$HOME/venv312/bin/python3" ]; then
+    PYTHON_BIN="$HOME/venv312/bin/python3"
 else
     PYTHON_BIN=$(which python3)
 fi
@@ -32,6 +37,7 @@ OUTPUT_DIR="check-output/$RSE/$DATE"
 RSE_LOWER=$(echo "$RSE" | tr '[:upper:]' '[:lower:]')
 DB_DUMP_FILE="$DB_DUMP_DIR/${RSE_LOWER}-db-$DATE.csv"
 RESULTS_FILE="$OUTPUT_DIR/results.json"
+SUMMARY_FILE="$OUTPUT_DIR/summary.json"
 
 # 1. Create necessary directories
 echo "--- Preparing Directories ---"
@@ -55,7 +61,8 @@ $PYTHON_BIN main.py \
     --rse "$RSE" \
     --site-dump "$SITE_DUMP" \
     --db-dump "$DB_DUMP_FILE" \
-    --output "$RESULTS_FILE"
+    --output "$RESULTS_FILE" \
+    --summary "$SUMMARY_FILE"
 
 if [ $? -ne 0 ]; then
     echo "Error: Consistency check failed."
@@ -63,4 +70,5 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "--- Process Complete ---"
-echo "Results saved to: $RESULTS_FILE"
+echo "Detailed results saved to: $RESULTS_FILE"
+echo "Stats summary saved to: $SUMMARY_FILE"

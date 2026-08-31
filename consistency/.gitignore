@@ -3,6 +3,14 @@ etc/.secrets/*
 !etc/.secrets/.gitkeep
 .token.tmp
 .setup.tmp
+bt_token
+bt_*
+
+# Local diagnostic scratch scripts
+Check-RSE-id-lookup.py
+Count-replicas-without-the-contents.py
+Counting-total-replicas.py
+Test-filtering-by-rse_id.py
 
 # Project Instructions (requested)
 GEMINI.md

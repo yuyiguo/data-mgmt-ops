@@ -25,16 +25,19 @@ class SiteDumpParser:
         h = hashlib.md5(s.encode()).hexdigest()
         return f"{h[:2]}/{h[2:4]}"
 
+    @staticmethod
+    def _strip_known_prefix(path):
+        for prefix in ("dune/RSE/", "protodune/RSE/", "RSE/"):
+            if path.startswith(prefix):
+                return path[len(prefix):]
+        return path
+
     def validate_path(self, path):
         """
         Validates the path based on the RSE's algorithm.
         Returns (is_valid, scope, name, reason)
         """
-        path = path.lstrip('/')
-        if path.startswith('dune/RSE/'):
-            path = path[9:]
-        elif path.startswith('RSE/'):
-            path = path[4:]
+        path = self._strip_known_prefix(path.lstrip('/'))
             
         parts = path.split('/')
         if not parts or not parts[-1]:
@@ -53,8 +56,11 @@ class SiteDumpParser:
         if self.algorithm == "hash":
             if len(parts) < 4:
                 return False, scope, name, "Path too short for hash algo (expected /scope/h1/h2/LFN)"
-            
-            actual_hash = "/".join(parts[1:3])
+
+            # Site dumps may include a storage mount prefix before the Rucio
+            # deterministic path, e.g. /cephfs/grid/dune/<scope>/<h1>/<h2>/<LFN>.
+            scope = parts[-4]
+            actual_hash = "/".join(parts[-3:-1])
             expected_hash = self.get_rucio_hash(scope, name)
             
             if actual_hash == expected_hash:
@@ -81,16 +87,37 @@ class SiteDumpParser:
 
         with open(self.dump_path, 'r') as f:
             for line in f:
-                path = line.strip()
-                if not path:
+                line = line.strip()
+                if not line:
                     continue
+                
+                if '\t' in line:
+                    parts = line.split('\t')
+                else:
+                    parts = line.split()
+                
+                path = parts[0] if parts else ''
+                size = None
+                adler32 = None
+                
+                if len(parts) > 1:
+                    try:
+                        size = int(parts[1])
+                    except ValueError:
+                        pass
+                if len(parts) > 2:
+                    adler32 = parts[2]
+                    if adler32.upper() == 'N/A':
+                        adler32 = None
                 
                 is_valid, scope, name, reason = self.validate_path(path)
                 
                 entry = {
                     'scope': scope,
                     'name': name,
-                    'path': path
+                    'path': path,
+                    'bytes': size,
+                    'adler32': adler32
                 }
 
                 if is_valid:
