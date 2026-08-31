@@ -11,18 +11,18 @@ from datetime import datetime, timezone
 SCOPE_NAME = "dune-rucio-consistency-checker"
 
 METRIC_NAMES = {
-    "total_catalog_file_count": ("dune_rucio_catalog_files_total", "1"),
+    "total_catalog_file_count": ("dune_rucio_catalog_files_total", ""),
     "total_catalog_size_GB": ("dune_rucio_catalog_size_gb", "GB"),
-    "total_site_valid_file_count": ("dune_rucio_site_valid_files_total", "1"),
+    "total_site_valid_file_count": ("dune_rucio_site_valid_files_total", ""),
     "total_site_valid_size_GB": ("dune_rucio_site_valid_size_gb", "GB"),
-    "total_site_unknown_file_count": ("dune_rucio_site_unknown_files_total", "1"),
-    "total_dark_file_count": ("dune_rucio_dark_files_total", "1"),
+    "total_site_unknown_file_count": ("dune_rucio_site_unknown_files_total", ""),
+    "total_dark_file_count": ("dune_rucio_dark_files_total", ""),
     "total_dark_size_GB": ("dune_rucio_dark_size_gb", "GB"),
-    "total_missing_file_count": ("dune_rucio_missing_files_total", "1"),
+    "total_missing_file_count": ("dune_rucio_missing_files_total", ""),
     "total_missing_size_GB": ("dune_rucio_missing_size_gb", "GB"),
-    "total_size_mismatch_file_count": ("dune_rucio_size_mismatch_files_total", "1"),
+    "total_size_mismatch_file_count": ("dune_rucio_size_mismatch_files_total", ""),
     "total_size_mismatch_size_GB": ("dune_rucio_size_mismatch_size_gb", "GB"),
-    "total_checksum_mismatch_file_count": ("dune_rucio_checksum_mismatch_files_total", "1"),
+    "total_checksum_mismatch_file_count": ("dune_rucio_checksum_mismatch_files_total", ""),
     "total_checksum_mismatch_size_GB": ("dune_rucio_checksum_mismatch_size_gb", "GB"),
     "catalog_present_files": ("dune_rucio_catalog_present_files_percent", "%"),
     "catalog_present_size": ("dune_rucio_catalog_present_size_percent", "%"),
@@ -132,7 +132,7 @@ def metric_payload(summary, resource_attrs, timestamp=None):
             continue
         metric_name, unit = METRIC_NAMES.get(
             stat_key,
-            (f"dune_rucio_{stat_key}".lower(), "1"),
+            (f"dune_rucio_{stat_key}".lower(), ""),
         )
         point = {
             "attributes": attributes({"rse": rse}),

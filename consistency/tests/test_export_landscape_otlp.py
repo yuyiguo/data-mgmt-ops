@@ -22,12 +22,14 @@ class TestLandscapeOtlpExport(unittest.TestCase):
         metrics = payload["resourceMetrics"][0]["scopeMetrics"][0]["metrics"]
 
         self.assertEqual(metrics[0]["name"], "dune_rucio_catalog_files_total")
+        self.assertEqual(metrics[0]["unit"], "")
         self.assertEqual(metrics[0]["gauge"]["dataPoints"][0]["asInt"], "2")
         self.assertEqual(
             metrics[0]["gauge"]["dataPoints"][0]["attributes"][0],
             {"key": "rse", "value": {"stringValue": "TEST_RSE"}},
         )
         self.assertEqual(metrics[1]["name"], "dune_rucio_catalog_present_files_percent")
+        self.assertEqual(metrics[1]["unit"], "%")
         self.assertEqual(metrics[1]["gauge"]["dataPoints"][0]["asDouble"], 50.0)
 
     def test_missing_file_logs_are_one_record_per_dataset(self):
