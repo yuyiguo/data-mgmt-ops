@@ -146,6 +146,13 @@ source setup_landscape_otlp.sh
 
 That performs the same steps as the cron job for every RSE in `rse_url.txt`: refresh a GFAL token, discover new dumps, copy new dumps locally, run the checker, export summary metrics to Landscape, and update `state/rse_dumps.json` after success.
 
+Before running on a new server checkout, create the local DB secrets file. It is intentionally ignored by Git:
+
+```bash
+mkdir -p etc/.secrets
+vi etc/.secrets/db.json
+```
+
 Before running the full workflow, you can inspect what discovery would process:
 
 ```bash
@@ -208,6 +215,8 @@ export CHECKER_PYTHON=/Users/yuyi/venv312/bin/python3
 htgettoken -i dune -r production -a htvaultprod.fnal.gov
 export BEARER_TOKEN="$(cat /run/user/$(id -u)/bt_u$(id -u))"
 ```
+
+Landscape metric timestamps use the remote dump creation time when available. If `gfal-stat` does not expose creation time for a site, the automation falls back to modification time.
 
 If `CHECKER_ALERT_EMAIL` is set and the `mail` command is available, failures send an email with the failed stage and the tail of the stage log.
 

@@ -118,11 +118,13 @@ for item_file in "$WORK_DIR"/item_*.json; do
     local_dir=$("$PYTHON_BIN" -c 'import json,sys; print(json.load(open(sys.argv[1]))["local_dir"])' "$item_file")
     run_date=$("$PYTHON_BIN" -c 'import json,sys; print(json.load(open(sys.argv[1]))["run_date"])' "$item_file")
     created_at=$("$PYTHON_BIN" -c 'import json,sys; print(json.load(open(sys.argv[1])).get("created_at") or "")' "$item_file")
+    modified_at=$("$PYTHON_BIN" -c 'import json,sys; print(json.load(open(sys.argv[1])).get("modified_at") or "")' "$item_file")
+    dump_timestamp="${created_at:-$modified_at}"
 
     run_log_dir="$LOG_ROOT/$rse/$run_date"
     mkdir -p "$run_log_dir" "$local_dir"
 
-    audit "RSE_START rse=$rse run_date=$run_date remote=$remote_path local=$local_path created_at=${created_at:-unknown}"
+    audit "RSE_START rse=$rse run_date=$run_date remote=$remote_path local=$local_path created_at=${created_at:-unknown} modified_at=${modified_at:-unknown}"
 
     if ! run_stage "$rse" "gfal_token_copy" "$run_log_dir/gfal_token_copy.log" \
         setup_gfal_token; then
@@ -141,8 +143,8 @@ for item_file in "$WORK_DIR"/item_*.json; do
     fi
 
     export_args=()
-    if [ -n "$created_at" ]; then
-        export_args+=(--timestamp "$created_at")
+    if [ -n "$dump_timestamp" ]; then
+        export_args+=(--timestamp "$dump_timestamp")
     fi
 
     if ! run_stage "$rse" "export_summary" "$run_log_dir/export_summary.log" \
