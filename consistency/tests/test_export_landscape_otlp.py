@@ -29,7 +29,7 @@ class TestLandscapeOtlpExport(unittest.TestCase):
             {"key": "rse", "value": {"stringValue": "TEST_RSE"}},
         )
         self.assertEqual(metrics[1]["name"], "dune_rucio_catalog_present_files_percent")
-        self.assertEqual(metrics[1]["unit"], "%")
+        self.assertEqual(metrics[1]["unit"], "")
         self.assertEqual(metrics[1]["gauge"]["dataPoints"][0]["asDouble"], 50.0)
 
     def test_missing_file_logs_are_one_record_per_dataset(self):
