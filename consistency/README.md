@@ -221,6 +221,7 @@ export CHECKER_DISCOVERY_RETRIES=3
 export CHECKER_ALERT_EMAIL=you@example.org
 export CHECKER_PYTHON=/Users/yuyi/venv312/bin/python3
 export CHECKER_MONTHLY_SUMMARY_ONLY=1
+export CHECKER_APPEND_AUDIT_LOG=0
 export HTGETTOKENOPTS=--credkey=dunepro/managedtokens/fifeutilgpvm01.fnal.gov
 ```
 
@@ -263,10 +264,10 @@ export CHECKER_DISCOVERY_RETRIES=3
 Cron example for midnight US Central time, assuming the VM timezone is `America/Chicago`:
 
 ```cron
-0 0 * * * cd /Users/yuyi/github-dev/data-mgmt-ops/consistency && /bin/bash ./monthly_check_and_export.sh >> logs/cron.log 2>&1
+0 0 * * * cd /Users/yuyi/github-dev/data-mgmt-ops/consistency && /bin/bash ./monthly_check_and_export.sh > logs/cron.log 2>&1
 ```
 
-The automation writes an audit log to `logs/monthly_checker.log` and per-RSE stage logs under `logs/<RSE>/<RUN_DATE>/`.
+The automation writes an audit log to `logs/monthly_checker.log` and per-RSE stage logs under `logs/<RSE>/<RUN_DATE>/`. By default `monthly_checker.log` is reset at the start of each run, so it shows only the latest cron result. Set `CHECKER_APPEND_AUDIT_LOG=1` to keep appending historical runs. Use `>` rather than `>>` in the crontab redirection if you also want `logs/cron.log` to contain only the latest run.
 
 ## Configuration
 
