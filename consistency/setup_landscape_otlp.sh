@@ -22,9 +22,25 @@ setup_gfal_token() {
         return 0
     fi
 
+    echo "Refreshing GFAL bearer token on host $(hostname) as user $(id -un)"
+    echo "XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-unset}"
+
+    if command -v klist >/dev/null 2>&1; then
+        if klist -s; then
+            echo "Kerberos credentials found:"
+            klist
+        else
+            echo "Warning: no valid Kerberos credentials found by klist." >&2
+            echo "If htgettoken cannot use an existing Vault login, cron needs a Kerberos credential before requesting a token." >&2
+        fi
+    else
+        echo "Warning: klist not found; Kerberos credential status was not checked." >&2
+    fi
+
     htgettoken -i dune -r production -a htvaultprod.fnal.gov || return $?
 
     local token_file="/run/user/$(id -u)/bt_u$(id -u)"
+    echo "Expected bearer token file: $token_file"
     if [ ! -r "$token_file" ]; then
         echo "Error: bearer token file not readable: $token_file" >&2
         return 1

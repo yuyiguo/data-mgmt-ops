@@ -24,6 +24,13 @@ audit() {
     echo "[$(timestamp)] $*" | tee -a "$AUDIT_LOG"
 }
 
+display_log_path() {
+    case "$1" in
+        /*) echo "$1" ;;
+        *) echo "$PROJECT_ROOT/$1" ;;
+    esac
+}
+
 send_failure_email() {
     local rse="$1"
     local stage="$2"
@@ -44,7 +51,7 @@ send_failure_email() {
         echo "Stage: $stage"
         echo "Host: $(hostname)"
         echo "Time: $(timestamp)"
-        echo "Log: $PROJECT_ROOT/$log_file"
+        echo "Log: $(display_log_path "$log_file")"
         echo
         echo "Last 80 log lines:"
         tail -n 80 "$log_file" 2>/dev/null

@@ -233,6 +233,20 @@ Landscape metric timestamps use the remote dump creation time when available. If
 
 If `CHECKER_ALERT_EMAIL` is set and the `mail` command is available, failures send an email with the failed stage and the tail of the stage log.
 
+Cron runs without your interactive shell environment. Before relying on the midnight job, confirm that the cron context can obtain a token. The token stage logs are:
+
+```bash
+logs/<RSE>/<RUN_DATE>/gfal_token_copy.log
+```
+
+and for discovery:
+
+```bash
+/tmp/rucio-consistency.*/gfal_token_discover.log
+```
+
+Those logs print the cron user, `XDG_RUNTIME_DIR`, the expected bearer token path, and whether `klist` finds a valid Kerberos credential. If cron has no Kerberos ticket and `htgettoken` cannot use an existing Vault login, token refresh will fail before any GFAL commands run.
+
 Cron example for midnight US Central time, assuming the VM timezone is `America/Chicago`:
 
 ```cron
