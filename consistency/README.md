@@ -217,6 +217,7 @@ Useful environment variables:
 
 ```bash
 export DUMP_STABILITY_WAIT_SECONDS=300
+export CHECKER_DISCOVERY_RETRIES=3
 export CHECKER_ALERT_EMAIL=you@example.org
 export CHECKER_PYTHON=/Users/yuyi/venv312/bin/python3
 export CHECKER_MONTHLY_SUMMARY_ONLY=1
@@ -251,6 +252,12 @@ Those logs print the cron user, `XDG_RUNTIME_DIR`, `HTGETTOKENOPTS`, and the exp
 
 ```bash
 HTGETTOKENOPTS=--credkey=dunepro/managedtokens/fifeutilgpvm01.fnal.gov
+```
+
+Discovery retries failed RSEs three times by default. A temporary GFAL failure for one RSE is logged, retried, and then reported in `logs/monthly_checker.log` as `DISCOVER_FAILED_RSES` if it still fails. Successful discoveries still proceed to copy, check, and export. Override the retry count with:
+
+```bash
+export CHECKER_DISCOVERY_RETRIES=3
 ```
 
 Cron example for midnight US Central time, assuming the VM timezone is `America/Chicago`:

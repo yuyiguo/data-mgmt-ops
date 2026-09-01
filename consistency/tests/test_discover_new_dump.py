@@ -5,6 +5,7 @@ import unittest
 from src.discover_new_dump import (
     RSEConfig,
     date_from_name,
+    discover,
     inspect_remote_file,
     is_new_dump,
     parse_config,
@@ -84,6 +85,62 @@ class TestDiscoverNewDump(unittest.TestCase):
             }
         }
         self.assertFalse(is_new_dump(info, state))
+
+    def test_discover_skips_failed_rse_and_continues(self):
+        args = mock.Mock(
+            config="unused.txt",
+            rse=None,
+            state="missing-state.json",
+            stability_wait=0,
+            all=True,
+            retries=1,
+        )
+        configs = [
+            RSEConfig("BAD_RSE", "https://bad.example/dumps", "gfal-downloads/BAD_RSE", "list"),
+            RSEConfig("GOOD_RSE", "https://good.example/dumps", "gfal-downloads/GOOD_RSE", "list"),
+        ]
+
+        def inspect_side_effect(config):
+            if config.rse == "BAD_RSE":
+                raise RuntimeError("gfal-ls failed")
+            return inspect_remote_file(config, "https://good.example/dumps/dump_20260901", "dump_20260901")
+
+        with mock.patch("src.discover_new_dump.parse_config", return_value=configs), \
+             mock.patch("src.discover_new_dump.inspect_remote", side_effect=inspect_side_effect), \
+             mock.patch("src.discover_new_dump.run_command", return_value="Size: 100\nModify: 2026-09-01 03:12:00\n"):
+            items = discover(args)
+
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["rse"], "GOOD_RSE")
+
+    def test_discover_retries_failed_rse(self):
+        args = mock.Mock(
+            config="unused.txt",
+            rse=None,
+            state="missing-state.json",
+            stability_wait=0,
+            all=True,
+            retries=3,
+        )
+        configs = [
+            RSEConfig("FLAKY_RSE", "https://flaky.example/dumps", "gfal-downloads/FLAKY_RSE", "list"),
+        ]
+        calls = []
+
+        def inspect_side_effect(config):
+            calls.append(config.rse)
+            if len(calls) == 1:
+                raise RuntimeError("temporary gfal-ls failed")
+            return inspect_remote_file(config, "https://flaky.example/dumps/dump_20260901", "dump_20260901")
+
+        with mock.patch("src.discover_new_dump.parse_config", return_value=configs), \
+             mock.patch("src.discover_new_dump.inspect_remote", side_effect=inspect_side_effect), \
+             mock.patch("src.discover_new_dump.run_command", return_value="Size: 100\nModify: 2026-09-01 03:12:00\n"):
+            items = discover(args)
+
+        self.assertEqual(calls, ["FLAKY_RSE", "FLAKY_RSE"])
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["rse"], "FLAKY_RSE")
 
 
 if __name__ == "__main__":

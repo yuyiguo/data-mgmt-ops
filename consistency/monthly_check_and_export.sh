@@ -10,6 +10,7 @@ STATE_FILE="${CHECKER_STATE_FILE:-state/rse_dumps.json}"
 LOG_ROOT="${CHECKER_LOG_ROOT:-logs}"
 AUDIT_LOG="${CHECKER_AUDIT_LOG:-$LOG_ROOT/monthly_checker.log}"
 STABILITY_WAIT_SECONDS="${DUMP_STABILITY_WAIT_SECONDS:-300}"
+DISCOVERY_RETRIES="${CHECKER_DISCOVERY_RETRIES:-3}"
 PYTHON_BIN="${CHECKER_PYTHON:-python3}"
 ALERT_EMAIL="${CHECKER_ALERT_EMAIL:-}"
 MONTHLY_SUMMARY_ONLY="${CHECKER_MONTHLY_SUMMARY_ONLY:-1}"
@@ -81,7 +82,7 @@ source setup_landscape_otlp.sh >/dev/null
 WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/rucio-consistency.XXXXXX")"
 DISCOVER_JSON="$WORK_DIR/work_items.json"
 
-audit "DISCOVER_START config=$CONFIG_FILE state=$STATE_FILE stability_wait=${STABILITY_WAIT_SECONDS}s"
+audit "DISCOVER_START config=$CONFIG_FILE state=$STATE_FILE stability_wait=${STABILITY_WAIT_SECONDS}s retries=$DISCOVERY_RETRIES"
 if ! run_stage "ALL" "gfal_token_discover" "$WORK_DIR/gfal_token_discover.log" \
     setup_gfal_token; then
     exit 1
@@ -91,10 +92,17 @@ if ! "$PYTHON_BIN" src/discover_new_dump.py discover \
     --config "$CONFIG_FILE" \
     --state "$STATE_FILE" \
     --stability-wait "$STABILITY_WAIT_SECONDS" \
+    --retries "$DISCOVERY_RETRIES" \
     >"$DISCOVER_JSON" 2>"$WORK_DIR/discover.err"; then
     audit "DISCOVER_FAILED stderr=$WORK_DIR/discover.err"
     send_failure_email "ALL" "discover" "$WORK_DIR/discover.err"
     exit 1
+fi
+
+if [ -s "$WORK_DIR/discover.err" ]; then
+    while IFS= read -r line; do
+        audit "$line"
+    done < "$WORK_DIR/discover.err"
 fi
 
 "$PYTHON_BIN" - "$DISCOVER_JSON" "$WORK_DIR" <<'PY'

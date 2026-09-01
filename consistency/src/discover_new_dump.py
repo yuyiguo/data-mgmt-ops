@@ -265,23 +265,61 @@ def discover(args):
 
     state = load_state(args.state)
     work_items = []
-    for config in configs:
+    pending_configs = configs
+    failed_configs = []
+    retries = max(1, args.retries)
+
+    for attempt in range(1, retries + 1):
+        if not pending_configs:
+            break
+
+        failed_configs = []
+        if attempt > 1:
+            failed_names = ",".join(config.rse for config in pending_configs)
+            print(f"DISCOVER_RETRY attempt={attempt} rse_list={failed_names}", file=sys.stderr)
+
+        for config in pending_configs:
+            info = discover_one(config, args, state)
+            if info == "failed":
+                failed_configs.append(config)
+                continue
+            if not info:
+                continue
+            if args.all or is_new_dump(info, state):
+                work_items.append(asdict(info))
+
+        pending_configs = failed_configs
+
+    if failed_configs:
+        failed_names = ",".join(config.rse for config in failed_configs)
+        print(f"DISCOVER_FAILED_RSES rse_list={failed_names}", file=sys.stderr)
+
+    return work_items
+
+
+def discover_one(config, args, state):
+    try:
         info = inspect_remote(config)
-        if not info:
-            continue
-        if args.stability_wait > 0:
+    except RuntimeError as exc:
+        print(f"DISCOVER_RSE_FAILED rse={config.rse} error={exc}", file=sys.stderr)
+        return "failed"
+    if not info:
+        return None
+    if args.stability_wait > 0:
+        try:
             time.sleep(args.stability_wait)
             stable_info = inspect_remote_file(config, info.remote_path, info.basename)
-            if state_key(info) != state_key(stable_info):
-                print(
-                    f"Skipping unstable dump for {config.rse}: {info.remote_path}",
-                    file=sys.stderr,
-                )
-                continue
-            info = stable_info
-        if args.all or is_new_dump(info, state):
-            work_items.append(asdict(info))
-    return work_items
+        except RuntimeError as exc:
+            print(f"DISCOVER_RSE_FAILED rse={config.rse} error={exc}", file=sys.stderr)
+            return "failed"
+        if state_key(info) != state_key(stable_info):
+            print(
+                f"Skipping unstable dump for {config.rse}: {info.remote_path}",
+                file=sys.stderr,
+            )
+            return None
+        info = stable_info
+    return info
 
 
 def mark_processed(args):
@@ -311,6 +349,12 @@ def parse_args():
         type=int,
         default=0,
         help="Seconds to wait and re-stat the selected dump before emitting it",
+    )
+    discover_parser.add_argument(
+        "--retries",
+        type=int,
+        default=3,
+        help="Discovery attempts for RSEs that fail GFAL inspection",
     )
 
     mark_parser = subparsers.add_parser("mark-processed", help="Record one completed work item in state")
