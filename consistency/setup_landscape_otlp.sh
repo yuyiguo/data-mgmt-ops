@@ -11,6 +11,7 @@
 
 export OTEL_EXPORTER_OTLP_ENDPOINT="${OTEL_EXPORTER_OTLP_ENDPOINT:-https://landscape.fnal.gov/otlp}"
 export OTEL_SERVICE_NAME="${OTEL_SERVICE_NAME:-dune-rucio-consistency-checker}"
+export HTGETTOKENOPTS="${HTGETTOKENOPTS:---credkey=dunepro/managedtokens/fifeutilgpvm01.fnal.gov}"
 
 _landscape_instance_id="${LANDSCAPE_INSTANCE_ID:-$(hostname)}"
 export OTEL_RESOURCE_ATTRIBUTES="${OTEL_RESOURCE_ATTRIBUTES:-experiment=dune,service.namespace=data-mgmt-ops,service.instance.id=${_landscape_instance_id}}"
@@ -24,20 +25,14 @@ setup_gfal_token() {
 
     echo "Refreshing GFAL bearer token on host $(hostname) as user $(id -un)"
     echo "XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-unset}"
+    echo "HTGETTOKENOPTS=${HTGETTOKENOPTS}"
 
-    if command -v klist >/dev/null 2>&1; then
-        if klist -s; then
-            echo "Kerberos credentials found:"
-            klist
-        else
-            echo "Warning: no valid Kerberos credentials found by klist." >&2
-            echo "If htgettoken cannot use an existing Vault login, cron needs a Kerberos credential before requesting a token." >&2
-        fi
-    else
-        echo "Warning: klist not found; Kerberos credential status was not checked." >&2
+    local htgettoken_opts=()
+    if [ -n "${HTGETTOKENOPTS:-}" ]; then
+        read -r -a htgettoken_opts <<< "$HTGETTOKENOPTS"
     fi
 
-    htgettoken -i dune -r production -a htvaultprod.fnal.gov || return $?
+    htgettoken "${htgettoken_opts[@]}" -i dune -r production -a htvaultprod.fnal.gov || return $?
 
     local token_file="/run/user/$(id -u)/bt_u$(id -u)"
     echo "Expected bearer token file: $token_file"
@@ -87,6 +82,7 @@ echo "Landscape OTLP environment configured:"
 echo "  OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}"
 echo "  OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME}"
 echo "  OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES}"
+echo "  HTGETTOKENOPTS=${HTGETTOKENOPTS}"
 echo
 echo "Upload summary metrics:"
 echo "  landscape_export_summary <RSE_NAME> <DATE_STAMP>"

@@ -220,12 +220,14 @@ export DUMP_STABILITY_WAIT_SECONDS=300
 export CHECKER_ALERT_EMAIL=you@example.org
 export CHECKER_PYTHON=/Users/yuyi/venv312/bin/python3
 export CHECKER_MONTHLY_SUMMARY_ONLY=1
+export HTGETTOKENOPTS=--credkey=dunepro/managedtokens/fifeutilgpvm01.fnal.gov
 ```
 
 `setup_landscape_otlp.sh` defines `setup_gfal_token`, but does not refresh a token just by being sourced. The monthly automation refreshes the short-lived DUNE production token immediately before GFAL discovery and before each GFAL copy:
 
 ```bash
-htgettoken -i dune -r production -a htvaultprod.fnal.gov
+HTGETTOKENOPTS=--credkey=dunepro/managedtokens/fifeutilgpvm01.fnal.gov \
+  htgettoken -i dune -r production -a htvaultprod.fnal.gov
 export BEARER_TOKEN="$(cat /run/user/$(id -u)/bt_u$(id -u))"
 ```
 
@@ -245,12 +247,16 @@ and for discovery:
 /tmp/rucio-consistency.*/gfal_token_discover.log
 ```
 
-Those logs print the cron user, `XDG_RUNTIME_DIR`, the expected bearer token path, and whether `klist` finds a valid Kerberos credential. If cron has no Kerberos ticket and `htgettoken` cannot use an existing Vault login, token refresh will fail before any GFAL commands run.
+Those logs print the cron user, `XDG_RUNTIME_DIR`, `HTGETTOKENOPTS`, and the expected bearer token path. The server login environment normally sets `HTGETTOKENOPTS`, but cron does not. `setup_landscape_otlp.sh` sets a default managed-token credkey for the `dunepro` cron job:
+
+```bash
+HTGETTOKENOPTS=--credkey=dunepro/managedtokens/fifeutilgpvm01.fnal.gov
+```
 
 Cron example for midnight US Central time, assuming the VM timezone is `America/Chicago`:
 
 ```cron
-0 0 * * * cd /Users/yuyi/github-dev/data-mgmt-ops/consistency && ./monthly_check_and_export.sh >> logs/cron.log 2>&1
+0 0 * * * cd /Users/yuyi/github-dev/data-mgmt-ops/consistency && /bin/bash ./monthly_check_and_export.sh >> logs/cron.log 2>&1
 ```
 
 The automation writes an audit log to `logs/monthly_checker.log` and per-RSE stage logs under `logs/<RSE>/<RUN_DATE>/`.
