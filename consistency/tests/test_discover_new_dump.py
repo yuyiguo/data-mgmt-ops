@@ -47,6 +47,16 @@ class TestDiscoverNewDump(unittest.TestCase):
         self.assertTrue(created_at.startswith("2026-08-19T"))
         self.assertTrue(modified_at.startswith("2026-08-19T"))
 
+    def test_parse_gfal_stat_extracts_fractional_seconds(self):
+        size, created_at, modified_at = parse_gfal_stat(
+            "Size: 12345\n"
+            "Modify: 2026-08-24 02:33:42.000000\n"
+        )
+
+        self.assertEqual(size, 12345)
+        self.assertIsNone(created_at)
+        self.assertEqual(modified_at, "2026-08-24T07:33:42Z")
+
     def test_date_from_name(self):
         self.assertEqual(date_from_name("dump_20260819"), "20260819")
         self.assertEqual(date_from_name("dump-2026-08-19"), "20260819")

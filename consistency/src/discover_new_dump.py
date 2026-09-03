@@ -105,8 +105,12 @@ def parse_datetime(value):
 
     normalized = re.sub(r"\s+", " ", value)
     formats = (
+        "%Y-%m-%d %H:%M:%S.%f",
+        "%Y-%m-%d %H:%M:%S.%f %z",
         "%Y-%m-%d %H:%M:%S",
         "%Y-%m-%d %H:%M:%S %z",
+        "%Y-%m-%dT%H:%M:%S.%f",
+        "%Y-%m-%dT%H:%M:%S.%fZ",
         "%Y-%m-%dT%H:%M:%S",
         "%Y-%m-%dT%H:%M:%SZ",
         "%a %b %d %H:%M:%S %Y",
