@@ -44,6 +44,10 @@ if [ "${CHECKER_SUMMARY_ONLY:-0}" = "1" ]; then
     MAIN_ARGS+=(--summary-only)
 fi
 
+if [ -n "${CHECKER_DUMP_TIMESTAMP:-}" ]; then
+    MAIN_ARGS+=(--dump-timestamp "$CHECKER_DUMP_TIMESTAMP")
+fi
+
 # 1. Create necessary directories
 echo "--- Preparing Directories ---"
 mkdir -p "$DB_DUMP_DIR"

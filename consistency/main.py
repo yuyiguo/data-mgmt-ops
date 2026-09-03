@@ -23,6 +23,7 @@ def main():
     parser.add_argument("--output", default="discrepancies.json", help="Output file for detailed discrepancies")
     parser.add_argument("--summary", default=None, help="Output file for stats-only summary JSON (defaults to summary.json next to output)")
     parser.add_argument("--summary-only", action="store_true", help="Only write summary.json; avoids large detailed results for big dumps")
+    parser.add_argument("--dump-timestamp", default=None, help="Optional timestamp from the remote dump metadata")
     
     args = parser.parse_args()
 
@@ -88,6 +89,8 @@ def main():
         "rse": results["rse"],
         "stats": results["stats"]
     }
+    if args.dump_timestamp:
+        summary_doc["dump_timestamp"] = args.dump_timestamp
 
     with open(summary_path, 'w') as f:
         json.dump(summary_doc, f, indent=2)

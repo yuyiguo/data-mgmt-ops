@@ -104,6 +104,24 @@ def unix_nano(timestamp=None):
     return int(dt.timestamp() * 1_000_000_000)
 
 
+def unix_seconds(timestamp):
+    if not timestamp:
+        return None
+
+    normalized = timestamp
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+
+    try:
+        dt = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return int(dt.timestamp())
+
+
 def endpoint_url(base_endpoint, signal):
     base = base_endpoint.rstrip("/")
     suffix = f"/v1/{signal}"
@@ -117,7 +135,7 @@ def load_json(path):
         return json.load(f)
 
 
-def metric_payload(summary, resource_attrs, timestamp=None):
+def metric_payload(summary, resource_attrs, timestamp=None, dump_timestamp=None):
     rse = summary.get("rse")
     stats = summary.get("stats")
     if not rse:
@@ -148,6 +166,21 @@ def metric_payload(summary, resource_attrs, timestamp=None):
             "unit": unit,
             "gauge": {
                 "dataPoints": [point],
+            },
+        })
+
+    dump_timestamp_value = dump_timestamp or summary.get("dump_timestamp")
+    dump_timestamp_seconds = unix_seconds(dump_timestamp_value)
+    if dump_timestamp_seconds is not None:
+        metrics.append({
+            "name": "dune_rucio_dump_timestamp_seconds",
+            "unit": "",
+            "gauge": {
+                "dataPoints": [{
+                    "attributes": attributes({"rse": rse}),
+                    "timeUnixNano": data_time,
+                    "asInt": str(dump_timestamp_seconds),
+                }],
             },
         })
 
@@ -281,7 +314,7 @@ def summarize_logs(results):
 
 
 def export_metrics(summary, args, resource_attrs):
-    payload = metric_payload(summary, resource_attrs, args.timestamp)
+    payload = metric_payload(summary, resource_attrs, args.timestamp, args.dump_timestamp)
     metrics = payload["resourceMetrics"][0]["scopeMetrics"][0]["metrics"]
     if args.dry_run:
         print(f"metrics prepared: {len(metrics)}")
@@ -327,7 +360,11 @@ def parse_args():
     )
     parser.add_argument(
         "--timestamp",
-        help="Optional ISO timestamp for metric samples. Defaults to upload time.",
+        help="Optional ISO timestamp for metric samples. Defaults to upload time. Avoid old sample timestamps with Mimir.",
+    )
+    parser.add_argument(
+        "--dump-timestamp",
+        help="Optional remote dump timestamp. Defaults to dump_timestamp from summary.json when present.",
     )
     parser.add_argument(
         "--log-batch-size",

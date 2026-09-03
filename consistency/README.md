@@ -55,7 +55,7 @@ A detailed JSON file containing:
 - `stats`: General summary statistics, size metrics in GB, checksum mismatch volumes, and catalog consistency metrics.
 
 ### 3. Stats Summary (`--summary`)
-A lightweight JSON file containing `rse` and the `stats` dictionary. This file is intended for low-cardinality dashboard metrics export.
+A lightweight JSON file containing `rse`, optional `dump_timestamp`, and the `stats` dictionary. This file is intended for low-cardinality dashboard metrics export.
 
 ### 4. Catalog Consistency Metrics
 The statistics section (`stats` dictionary) in the JSON report includes consistency percentages:
@@ -110,6 +110,12 @@ For large dumps where you only need `summary.json` for Landscape metrics, use su
 python3 main.py --rse <RSE_NAME> --site-dump /path/to/site_dump.txt --db-dump /path/to/rucio_db.csv --summary summary.json --summary-only
 ```
 
+If you know the remote dump timestamp, include it in `summary.json`:
+
+```bash
+python3 main.py --rse <RSE_NAME> --site-dump /path/to/site_dump.txt --db-dump /path/to/rucio_db.csv --summary summary.json --summary-only --dump-timestamp "2026-09-02T22:47:00Z"
+```
+
 ### 3. Export to Landscape
 The checker output can be exported to Landscape as OpenTelemetry data without rerunning the check:
 
@@ -122,7 +128,7 @@ landscape_export_results_logs DUNE_UK_MANCHESTER_CEPH 20260611
 
 Use `--dry-run` to validate record counts without posting to Landscape.
 
-The exporter sends `summary.json` stats as low-cardinality metrics with `rse` as a metric attribute. It sends `results.json` discrepancies and `missing_stats_by_dataset` as structured logs. Missing-file records with multiple datasets are normalized to one log record per dataset so queries like `event_type = "missing_file" AND dataset = "abc"` work reliably.
+The exporter sends `summary.json` stats as low-cardinality metrics with `rse` as a metric attribute. Metric samples use export time so Mimir does not reject old dump timestamps. When `dump_timestamp` is present, the exporter also sends `dune_rucio_dump_timestamp_seconds` as a gauge value for dashboards and freshness checks. It sends `results.json` discrepancies and `missing_stats_by_dataset` as structured logs. Missing-file records with multiple datasets are normalized to one log record per dataset so queries like `event_type = "missing_file" AND dataset = "abc"` work reliably.
 
 ### 4. Monthly Automation
 The monthly automation discovers new remote site dumps, copies them locally, runs the checker, exports summary metrics to Landscape, and records state only after a successful export.
@@ -233,7 +239,13 @@ HTGETTOKENOPTS=--credkey=dunepro/managedtokens/fifeutilgpvm01.fnal.gov \
 export BEARER_TOKEN="$(cat /run/user/$(id -u)/bt_u$(id -u))"
 ```
 
-Landscape metric timestamps use the remote dump creation time when available. If `gfal-stat` does not expose creation time for a site, the automation falls back to modification time.
+Landscape metric samples use export time because Mimir rejects samples older than its ingestion window. The remote dump time is preserved in `summary.json` as `dump_timestamp` and exported as:
+
+```text
+dune_rucio_dump_timestamp_seconds
+```
+
+The automation records the remote dump creation time when available. If `gfal-stat` does not expose creation time for a site, it falls back to modification time.
 
 If `CHECKER_ALERT_EMAIL` is set and the `mail` command is available, failures send an email with the failed stage and the tail of the stage log.
 

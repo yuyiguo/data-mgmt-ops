@@ -160,23 +160,18 @@ for item_file in "$WORK_DIR"/item_*.json; do
 
     if [ "$MONTHLY_SUMMARY_ONLY" = "1" ]; then
         if ! run_stage "$rse" "check" "$run_log_dir/check.log" \
-            env CHECKER_SUMMARY_ONLY=1 ./run_check.sh "$rse" "$local_path" "$run_date"; then
+            env CHECKER_SUMMARY_ONLY=1 CHECKER_DUMP_TIMESTAMP="$dump_timestamp" ./run_check.sh "$rse" "$local_path" "$run_date"; then
             continue
         fi
     else
         if ! run_stage "$rse" "check" "$run_log_dir/check.log" \
-            ./run_check.sh "$rse" "$local_path" "$run_date"; then
+            env CHECKER_DUMP_TIMESTAMP="$dump_timestamp" ./run_check.sh "$rse" "$local_path" "$run_date"; then
             continue
         fi
     fi
 
-    export_args=()
-    if [ -n "$dump_timestamp" ]; then
-        export_args+=(--timestamp "$dump_timestamp")
-    fi
-
     if ! run_stage "$rse" "export_summary" "$run_log_dir/export_summary.log" \
-        landscape_export_summary "$rse" "$run_date" "${export_args[@]}"; then
+        landscape_export_summary "$rse" "$run_date"; then
         continue
     fi
 
