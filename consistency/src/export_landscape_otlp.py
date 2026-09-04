@@ -16,6 +16,7 @@ METRIC_NAMES = {
     "total_site_valid_file_count": ("dune_rucio_site_valid_files_total", ""),
     "total_site_valid_size_GB": ("dune_rucio_site_valid_size_gb", ""),
     "total_site_unknown_file_count": ("dune_rucio_site_unknown_files_total", ""),
+    "total_site_unknown_size_GB": ("dune_rucio_site_unknown_size_gb", ""),
     "total_dark_file_count": ("dune_rucio_dark_files_total", ""),
     "total_dark_size_GB": ("dune_rucio_dark_size_gb", ""),
     "total_missing_file_count": ("dune_rucio_missing_files_total", ""),

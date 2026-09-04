@@ -19,6 +19,7 @@ def compare_summary_only(catalog_data, site_entries, rse=None, timestamp=None):
 
     total_site_bytes = 0
     total_site_unknown_count = 0
+    total_site_unknown_bytes = 0
     total_size_mismatch_count = 0
     total_checksum_mismatch_count = 0
     total_size_mismatch_bytes = 0
@@ -27,6 +28,9 @@ def compare_summary_only(catalog_data, site_entries, rse=None, timestamp=None):
     for is_valid, site_replica in site_entries:
         if not is_valid:
             total_site_unknown_count += 1
+            site_bytes = site_replica.get('bytes')
+            if site_bytes is not None:
+                total_site_unknown_bytes += site_bytes
             continue
 
         key = (site_replica['scope'], site_replica['name'])
@@ -102,6 +106,7 @@ def compare_summary_only(catalog_data, site_entries, rse=None, timestamp=None):
             'total_site_valid_file_count': len(site_keys),
             'total_site_valid_size_GB': _to_gb(total_site_bytes),
             'total_site_unknown_file_count': total_site_unknown_count,
+            'total_site_unknown_size_GB': _to_gb(total_site_unknown_bytes),
             'total_dark_file_count': len(dark_first_bytes),
             'total_dark_size_GB': _to_gb(total_dark_bytes),
             'total_missing_file_count': total_missing_count,
@@ -280,6 +285,7 @@ class ConsistencyComparator:
         percentage_catalog_consistent_size = (total_consistent_bytes / total_catalog_bytes * 100) if total_catalog_bytes > 0 else 100.0
         
         total_site_unknown_count = len(self.unknown_site_files)
+        total_site_unknown_bytes = sum(u['bytes'] for u in self.unknown_site_files if u.get('bytes') is not None)
         total_site_total_count = len(site_keys) + total_site_unknown_count
         percentage_site_known_files = (len(site_keys) / total_site_total_count * 100) if total_site_total_count > 0 else 100.0
 
@@ -298,6 +304,7 @@ class ConsistencyComparator:
                 'total_site_valid_file_count': len(site_keys),
                 'total_site_valid_size_GB': _to_gb(total_site_bytes),
                 'total_site_unknown_file_count': total_site_unknown_count,
+                'total_site_unknown_size_GB': _to_gb(total_site_unknown_bytes),
                 'total_dark_file_count': len(dark_files),
                 'total_dark_size_GB': _to_gb(total_dark_bytes),
                 'total_missing_file_count': total_missing_count,

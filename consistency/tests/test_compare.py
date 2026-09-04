@@ -143,7 +143,7 @@ class TestConsistencyChecker(unittest.TestCase):
             {"scope": "scope1", "name": "file_checksum_mismatch.root", "path": "/path/file_checksum_mismatch.root", "bytes": 1000, "adler32": "different"},
             {"scope": "scope1", "name": "file_dark.root", "path": "/path/file_dark.root", "bytes": 2000, "adler32": "dark123"}
         ]
-        unknown = [{"path": "/path/invalid_path", "reason": "Malformed Path"}]
+        unknown = [{"path": "/path/invalid_path", "reason": "Malformed Path", "bytes": 3000}]
 
         comparator = ConsistencyComparator(catalog, site_replicas, unknown)
         results = comparator.compare("TEST_RSE")
@@ -152,6 +152,7 @@ class TestConsistencyChecker(unittest.TestCase):
         self.assertIn("@timestamp", results)
         self.assertEqual(results["stats"]["total_catalog_file_count"], 4)
         self.assertEqual(results["stats"]["total_site_valid_file_count"], 4)
+        self.assertEqual(results["stats"]["total_site_unknown_file_count"], 1)
         self.assertEqual(results["stats"]["total_dark_file_count"], 1)
         self.assertEqual(results["stats"]["total_missing_file_count"], 1)
         self.assertEqual(results["stats"]["total_size_mismatch_file_count"], 1)
@@ -161,6 +162,7 @@ class TestConsistencyChecker(unittest.TestCase):
         to_gb = lambda b: round(b / (1024.0 ** 3), 6)
         self.assertEqual(results["stats"]["total_catalog_size_GB"], to_gb(3500))
         self.assertEqual(results["stats"]["total_site_valid_size_GB"], to_gb(13999))
+        self.assertEqual(results["stats"]["total_site_unknown_size_GB"], to_gb(3000))
         self.assertEqual(results["stats"]["total_dark_size_GB"], to_gb(2000))
         self.assertEqual(results["stats"]["total_missing_size_GB"], to_gb(500))
         self.assertEqual(results["stats"]["total_checksum_mismatch_size_GB"], to_gb(1000))
@@ -198,7 +200,7 @@ class TestConsistencyChecker(unittest.TestCase):
             {"scope": "scope1", "name": "file_checksum_mismatch.root", "path": "/path/file_checksum_mismatch.root", "bytes": 1000, "adler32": "different"},
             {"scope": "scope1", "name": "file_dark.root", "path": "/path/file_dark.root", "bytes": 2000, "adler32": "dark123"}
         ]
-        unknown = [{"path": "/path/invalid_path", "reason": "Malformed Path"}]
+        unknown = [{"path": "/path/invalid_path", "reason": "Malformed Path", "bytes": 3000}]
         site_entries = [(True, entry) for entry in site_replicas] + [(False, entry) for entry in unknown]
 
         full = ConsistencyComparator(catalog, site_replicas, unknown).compare("TEST_RSE")

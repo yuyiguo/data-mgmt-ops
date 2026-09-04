@@ -48,14 +48,14 @@ A high-level overview of counts, sizes (in GB), consistency percentages (present
 A detailed JSON file containing:
 - `dark_files`: List of files found on site with correct paths but missing from Rucio.
 - `missing_files`: List of files in Rucio missing from the site, including their size and dataset.
-- `unknown_files`: List of files on site with invalid Rucio path formats.
+- `unknown_files`: List of files on site with invalid Rucio path formats. If the site dump includes a size column, these records also contribute to `total_site_unknown_size_GB`.
 - `size_mismatch`: List of files present in both catalog and site storage but differing in size.
 - `checksum_mismatch`: List of files present in both catalog and site storage but differing in adler32 checksum.
 - `missing_stats_by_dataset`: Aggregated statistics (`missing_file_count`, `missing_bytes`, and `missing_size_GB`) of missing data per Scope and Dataset.
 - `stats`: General summary statistics, size metrics in GB, checksum mismatch volumes, and catalog consistency metrics.
 
 ### 3. Stats Summary (`--summary`)
-A lightweight JSON file containing `rse`, optional `dump_timestamp`, and the `stats` dictionary. This file is intended for low-cardinality dashboard metrics export.
+A lightweight JSON file containing `rse`, optional `dump_timestamp`, and the `stats` dictionary. This file is intended for low-cardinality dashboard metrics export. Unknown-file size is reported as `total_site_unknown_size_GB` when invalid site-dump lines include byte counts; path-only unknown records contribute count but not size.
 
 ### 4. Catalog Consistency Metrics
 The statistics section (`stats` dictionary) in the JSON report includes consistency percentages:
