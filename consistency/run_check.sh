@@ -48,6 +48,10 @@ if [ -n "${CHECKER_DUMP_TIMESTAMP:-}" ]; then
     MAIN_ARGS+=(--dump-timestamp "$CHECKER_DUMP_TIMESTAMP")
 fi
 
+if [ -n "${CHECKER_SITE_FILTER_STATS:-}" ]; then
+    MAIN_ARGS+=(--site-filter-stats "$CHECKER_SITE_FILTER_STATS")
+fi
+
 # 1. Create necessary directories
 echo "--- Preparing Directories ---"
 mkdir -p "$DB_DUMP_DIR"

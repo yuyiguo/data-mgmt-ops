@@ -24,10 +24,15 @@ def main():
     parser.add_argument("--summary", default=None, help="Output file for stats-only summary JSON (defaults to summary.json next to output)")
     parser.add_argument("--summary-only", action="store_true", help="Only write summary.json; avoids large detailed results for big dumps")
     parser.add_argument("--dump-timestamp", default=None, help="Optional timestamp from the remote dump metadata")
+    parser.add_argument("--site-filter-stats", default=None, help="Optional JSON stats from site dump prefix filtering")
     
     args = parser.parse_args()
 
     print(f"RSE: {args.rse}")
+    site_filter_stats = {}
+    if args.site_filter_stats:
+        with open(args.site_filter_stats) as f:
+            site_filter_stats = json.load(f)
     
     # Load RSE config to check type
     if os.path.exists(args.rse_config):
@@ -47,7 +52,15 @@ def main():
     if args.summary_only:
         print(f"Streaming site dump for summary-only check: {args.site_dump}")
         print(f"Algorithm: {site_parser.algorithm}")
-        results = compare_summary_only(catalog_data, site_parser.iter_entries(), rse=args.rse)
+        results = compare_summary_only(
+            catalog_data,
+            site_parser.iter_entries(),
+            rse=args.rse,
+            site_stats_provider=lambda: (
+                site_filter_stats.get("outside_prefix_file_count", site_parser.outside_prefix_count),
+                site_filter_stats.get("outside_prefix_bytes", site_parser.outside_prefix_bytes),
+            ),
+        )
     else:
         print(f"Loading site dump: {args.site_dump}")
         valid_replicas, unknown_files = site_parser.parse()
@@ -55,13 +68,20 @@ def main():
         print(f"Found {len(valid_replicas)} valid physical replicas and {len(unknown_files)} unknown files.")
 
         print("Comparing...")
-        comparator = ConsistencyComparator(catalog_data, valid_replicas, unknown_files)
+        comparator = ConsistencyComparator(
+            catalog_data,
+            valid_replicas,
+            unknown_files,
+            site_outside_prefix_count=site_filter_stats.get("outside_prefix_file_count", site_parser.outside_prefix_count),
+            site_outside_prefix_bytes=site_filter_stats.get("outside_prefix_bytes", site_parser.outside_prefix_bytes),
+        )
         results = comparator.compare(rse=args.rse)
 
     print(f"Results:")
     print(f"  Dark Files (correct path, not in DB): {results['stats']['total_dark_file_count']} ({results['stats'].get('total_dark_size_GB', 0.0):.3f} GB)")
     print(f"  Missing Files (in DB, not on site): {results['stats']['total_missing_file_count']} ({results['stats']['total_missing_size_GB']:.3f} GB)")
     print(f"  Unknown Files (invalid path format): {results['stats']['total_site_unknown_file_count']}")
+    print(f"  Outside Prefix Files (excluded before comparison): {results['stats'].get('total_site_outside_prefix_file_count', 0)} ({results['stats'].get('total_site_outside_prefix_size_GB', 0.0):.3f} GB)")
     print(f"  Size Mismatches: {results['stats'].get('total_size_mismatch_file_count', 0)} ({results['stats'].get('total_size_mismatch_size_GB', 0.0):.3f} GB)")
     print(f"  Checksum Mismatches: {results['stats'].get('total_checksum_mismatch_file_count', 0)} ({results['stats'].get('total_checksum_mismatch_size_GB', 0.0):.3f} GB)")
     print(f"  Total Catalog: {results['stats']['total_catalog_file_count']} files ({results['stats'].get('total_catalog_size_GB', 0.0):.3f} GB)")

@@ -136,36 +136,60 @@ for item_file in "$WORK_DIR"/item_*.json; do
     rse=$("$PYTHON_BIN" -c 'import json,sys; print(json.load(open(sys.argv[1]))["rse"])' "$item_file")
     remote_path=$("$PYTHON_BIN" -c 'import json,sys; print(json.load(open(sys.argv[1]))["remote_path"])' "$item_file")
     local_path=$("$PYTHON_BIN" -c 'import json,sys; print(json.load(open(sys.argv[1]))["local_path"])' "$item_file")
+    source_local_path=$("$PYTHON_BIN" -c 'import json,sys; item=json.load(open(sys.argv[1])); print(item.get("source_local_path") or item["local_path"])' "$item_file")
     local_dir=$("$PYTHON_BIN" -c 'import json,sys; print(json.load(open(sys.argv[1]))["local_dir"])' "$item_file")
     run_date=$("$PYTHON_BIN" -c 'import json,sys; print(json.load(open(sys.argv[1]))["run_date"])' "$item_file")
     created_at=$("$PYTHON_BIN" -c 'import json,sys; print(json.load(open(sys.argv[1])).get("created_at") or "")' "$item_file")
     modified_at=$("$PYTHON_BIN" -c 'import json,sys; print(json.load(open(sys.argv[1])).get("modified_at") or "")' "$item_file")
     dump_timestamp="${created_at:-$modified_at}"
+    filter_stats_file=""
 
     run_log_dir="$LOG_ROOT/$rse/$run_date"
-    mkdir -p "$run_log_dir" "$local_dir"
+    source_local_dir=$(dirname "$source_local_path")
+    mkdir -p "$run_log_dir" "$local_dir" "$source_local_dir"
 
-    audit "RSE_START rse=$rse run_date=$run_date remote=$remote_path local=$local_path created_at=${created_at:-unknown} modified_at=${modified_at:-unknown}"
+    audit "RSE_START rse=$rse run_date=$run_date remote=$remote_path local=$local_path source_local=$source_local_path created_at=${created_at:-unknown} modified_at=${modified_at:-unknown}"
 
     if ! run_stage "$rse" "gfal_token_copy" "$run_log_dir/gfal_token_copy.log" \
         setup_gfal_token; then
         continue
     fi
 
-    copy_url="file://$PROJECT_ROOT/$local_path"
-    if ! run_stage "$rse" "copy" "$run_log_dir/copy.log" \
-        gfal-copy -f "$remote_path" "$copy_url"; then
-        continue
+    copy_marker="$WORK_DIR/copied_$(printf "%s" "$source_local_path" | tr -c 'A-Za-z0-9._-' '_')"
+    if [ -f "$copy_marker" ]; then
+        audit "STAGE_SKIPPED rse=$rse stage=copy source_local=$source_local_path reason=shared_source_already_copied"
+    else
+        copy_url="file://$PROJECT_ROOT/$source_local_path"
+        if ! run_stage "$rse" "copy" "$run_log_dir/copy.log" \
+            gfal-copy -f "$remote_path" "$copy_url"; then
+            continue
+        fi
+        : > "$copy_marker"
+    fi
+
+    filter_needed=$("$PYTHON_BIN" -c 'import json,os,sys; cfg=json.load(open(sys.argv[1])).get(sys.argv[2], {}) if os.path.exists(sys.argv[1]) else {}; print("1" if (sys.argv[3] != sys.argv[4] or cfg.get("prefix") or cfg.get("exclude_prefixes")) else "0")' \
+        rse_config.json "$rse" "$source_local_path" "$local_path")
+    if [ "$filter_needed" = "1" ]; then
+        filter_stats_file="$run_log_dir/filter_site_dump_stats.json"
+        if ! run_stage "$rse" "filter_site_dump" "$run_log_dir/filter_site_dump.log" \
+            "$PYTHON_BIN" src/filter_site_dump_by_prefix.py \
+                --rse "$rse" \
+                --input "$source_local_path" \
+                --output "$local_path" \
+                --rse-config rse_config.json \
+                --stats-output "$filter_stats_file"; then
+            continue
+        fi
     fi
 
     if [ "$MONTHLY_SUMMARY_ONLY" = "1" ]; then
         if ! run_stage "$rse" "check" "$run_log_dir/check.log" \
-            env CHECKER_SUMMARY_ONLY=1 CHECKER_DUMP_TIMESTAMP="$dump_timestamp" ./run_check.sh "$rse" "$local_path" "$run_date"; then
+            env CHECKER_SUMMARY_ONLY=1 CHECKER_DUMP_TIMESTAMP="$dump_timestamp" CHECKER_SITE_FILTER_STATS="$filter_stats_file" ./run_check.sh "$rse" "$local_path" "$run_date"; then
             continue
         fi
     else
         if ! run_stage "$rse" "check" "$run_log_dir/check.log" \
-            env CHECKER_DUMP_TIMESTAMP="$dump_timestamp" ./run_check.sh "$rse" "$local_path" "$run_date"; then
+            env CHECKER_DUMP_TIMESTAMP="$dump_timestamp" CHECKER_SITE_FILTER_STATS="$filter_stats_file" ./run_check.sh "$rse" "$local_path" "$run_date"; then
             continue
         fi
     fi

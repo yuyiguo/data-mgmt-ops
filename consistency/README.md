@@ -136,15 +136,19 @@ The monthly automation discovers new remote site dumps, copies them locally, run
 Configure remote dump locations in `rse_url.txt`:
 
 ```text
-# rse_name remote_url local_dir mode
+# rse_name remote_url local_dir mode [shared_source]
 QMUL https://webdav.esc.qmul.ac.uk:8443/dune/dumps gfal-downloads/QMUL list
 RAL_ECHO https://webdav.echo.stfc.ac.uk:1094/dune:/protodune/dumps/dump_latest gfal-downloads/RAL_ECHO latest
+DUNE_CERN_EOS root://eospublic.cern.ch:1094/eos/experiment/neutplatform/protodune/dumps/latest gfal-downloads/DUNE_CERN_EOS latest CERN_NEUTPLATFORM
+DUNE_CERN_EOS_NP_BUFFER root://eospublic.cern.ch:1094/eos/experiment/neutplatform/protodune/dumps/latest gfal-downloads/DUNE_CERN_EOS_NP_BUFFER latest CERN_NEUTPLATFORM
 ```
 
 Modes:
 
 *   `list`: use `gfal-ls` on `remote_url`, then `gfal-stat` candidate dump files.
 *   `latest`: do not list; use `gfal-stat` directly on `remote_url` and copy it locally as `dump_YYYYMMDD` based on the remote creation or modification time.
+
+The optional `shared_source` field is for cases where multiple RSEs share one remote site dump. The raw dump is copied once under `gfal-downloads/_shared/<shared_source>/`, then filtered into each RSE's `local_dir` before comparison. Filtering is controlled by `prefix` and `exclude_prefixes` in `rse_config.json`; this is used for the shared CERN `DUNE_CERN_EOS` and `DUNE_CERN_EOS_NP_BUFFER` dump. Filtered-out records are excluded before dark/unknown classification and are counted in `summary.json` as `total_site_outside_prefix_file_count` and `total_site_outside_prefix_size_GB`.
 
 The automation tracks processed remote metadata in `state/rse_dumps.json`. A dump is treated as new when the remote path, size, creation time, or modification time differs from the saved state. By default, the selected remote dump is stat'ed twice with a 300 second wait, and it is skipped if metadata changes during that interval.
 
@@ -283,5 +287,5 @@ The automation writes an audit log to `logs/monthly_checker.log` and per-RSE sta
 
 ## Configuration
 
-*   **RSE Config (`rse_config.json`):** Contains site-specific `lfn2pfn` algorithms. Update manually using `fetch_rse_config.py`.
+*   **RSE Config (`rse_config.json`):** Contains site-specific `lfn2pfn` algorithms and optional storage dump filters (`prefix`, `exclude_prefixes`). Update manually or refresh Rucio-derived fields using `fetch_rse_config.py`.
 *   **DB Secrets (`etc/.secrets/db.json`):** Database connection details (Host, Port, User, Password, DBName).

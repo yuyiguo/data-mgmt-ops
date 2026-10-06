@@ -17,12 +17,17 @@
     "DUNE_CERN_EOS": {
         "lfn2pfn_algorithm": "hash",
         "is_deterministic": true,
-        "rse_type": "DISK"
+        "rse_type": "DISK",
+        "prefix": "/eos/experiment/neutplatform/protodune/dune",
+        "exclude_prefixes": [
+            "/eos/experiment/neutplatform/protodune/dune/np_buffer"
+        ]
     },
     "DUNE_CERN_EOS_NP_BUFFER": {
         "lfn2pfn_algorithm": "hash",
         "is_deterministic": true,
-        "rse_type": "DISK"
+        "rse_type": "DISK",
+        "prefix": "/eos/experiment/neutplatform/protodune/dune/np_buffer"
     },
     "DUNE_ES_PIC": {
         "lfn2pfn_algorithm": "hash",

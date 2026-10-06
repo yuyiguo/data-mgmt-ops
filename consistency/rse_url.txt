@@ -1,6 +1,7 @@
-# rse_name remote_url local_dir mode
+# rse_name remote_url local_dir mode [shared_source]
 # mode=list: use gfal-ls to discover dump files under remote_url.
 # mode=latest: use gfal-stat directly on remote_url and copy it as dump_YYYYMMDD.
+# shared_source: optional raw-download key used when multiple RSEs share one site dump.
 RAL_ECHO https://webdav.echo.stfc.ac.uk:1094/dune:/protodune/dumps/dump_latest gfal-downloads/RAL_ECHO latest
 DUNE_UK_LANCASTER_CEPH https://xgate.hec.lancs.ac.uk:1094//cephfs/grid/dune/dumps/ gfal-downloads/DUNE_UK_LANCASTER_CEPH list
 SURFSARA https://webdav.grid.surfsara.nl:2880/pnfs/grid.sara.nl/data/dune/dumps/ gfal-downloads/SURFSARA list
@@ -15,4 +16,5 @@ DUNE_US_BNL_SDCC https://dcdndoor.sdcc.bnl.gov:443/pnfs/sdcc.bnl.gov/data/dune/d
 NIKHEF https://dune.dcache.nikhef.nl:2880/pnfs/nikhef.nl/data/dune/generic/dumps/ gfal-downloads/NIKHEF list
 PRAGUE https://se1.farm.particle.cz/dune/dumps gfal-downloads/PRAGUE list
 DUNE_UK_GLASGOW https://cephc02.gla.scotgrid.ac.uk:1094/cephfs/dune/dumps/ gfal-downloads/DUNE_UK_GLASGOW list
-DUNE_CERN_EOS root://eospublic.cern.ch:1094/eos/experiment/neutplatform/protodune/dumps/latest gfal-downloads/DUNE_CERN_EOS latest
+DUNE_CERN_EOS root://eospublic.cern.ch:1094/eos/experiment/neutplatform/protodune/dumps/latest gfal-downloads/DUNE_CERN_EOS latest CERN_NEUTPLATFORM
+DUNE_CERN_EOS_NP_BUFFER root://eospublic.cern.ch:1094/eos/experiment/neutplatform/protodune/dumps/latest gfal-downloads/DUNE_CERN_EOS_NP_BUFFER latest CERN_NEUTPLATFORM

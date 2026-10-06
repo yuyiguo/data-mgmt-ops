@@ -7,17 +7,48 @@ class SiteDumpParser:
     def __init__(self, dump_path, rse_name, rse_config_path="rse_config.json"):
         self.dump_path = dump_path
         self.rse_name = rse_name
-        self.algorithm = self._load_algorithm(rse_config_path)
+        self.algorithm, self.prefix, self.exclude_prefixes = self._load_config(rse_config_path)
+        self.outside_prefix_count = 0
+        self.outside_prefix_bytes = 0
 
-    def _load_algorithm(self, config_path):
+    def _load_config(self, config_path):
         if not os.path.exists(config_path):
             print(f"Warning: {config_path} not found. Defaulting to 'hash' algorithm.")
-            return "hash"
+            return "hash", None, []
         
         with open(config_path, 'r') as f:
             config = json.load(f)
             rse_info = config.get(self.rse_name, {})
-            return rse_info.get("lfn2pfn_algorithm", "hash")
+            return (
+                rse_info.get("lfn2pfn_algorithm", "hash"),
+                self._normalize_prefix(rse_info.get("prefix")),
+                [
+                    self._normalize_prefix(prefix)
+                    for prefix in rse_info.get("exclude_prefixes", [])
+                    if self._normalize_prefix(prefix)
+                ],
+            )
+
+    @staticmethod
+    def _normalize_prefix(prefix):
+        if not prefix:
+            return None
+        return "/" + prefix.strip("/")
+
+    @staticmethod
+    def _path_matches_prefix(path, prefix):
+        if prefix is None:
+            return True
+        normalized = "/" + path.strip("/")
+        return normalized == prefix or normalized.startswith(prefix + "/")
+
+    def _inside_configured_prefix(self, path):
+        if not self._path_matches_prefix(path, self.prefix):
+            return False
+        return not any(
+            self._path_matches_prefix(path, excluded)
+            for excluded in self.exclude_prefixes
+        )
 
     @staticmethod
     def get_rucio_hash(scope, name):
@@ -61,6 +92,12 @@ class SiteDumpParser:
             adler32 = parts[2]
             if adler32.upper() == 'N/A':
                 adler32 = None
+
+        if not self._inside_configured_prefix(path):
+            self.outside_prefix_count += 1
+            if size is not None:
+                self.outside_prefix_bytes += size
+            return None
 
         is_valid, scope, name, reason = self.validate_path(path)
 

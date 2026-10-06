@@ -90,6 +90,38 @@ class TestConsistencyChecker(unittest.TestCase):
         self.assertEqual(valid[0]['bytes'], 44119078)
         self.assertEqual(valid[0]['adler32'], "23015cb1")
 
+    def test_site_dump_parser_counts_outside_prefix(self):
+        dump_content = (
+            "/storage/rse/scope1/aa/bb/file1.root\t100\taabbccdd\n"
+            "/storage/rse/excluded/scope2/aa/bb/file2.root\t200\taabbccdd\n"
+            "/storage/other/scope3/aa/bb/file3.root\t300\taabbccdd\n"
+        )
+        dump_path = os.path.join(self.temp_dir.name, "site_dump_prefix.txt")
+        with open(dump_path, "w") as f:
+            f.write(dump_content)
+
+        config_path = os.path.join(self.temp_dir.name, "rse_config.json")
+        with open(config_path, "w") as f:
+            json.dump(
+                {
+                    "TEST_RSE": {
+                        "lfn2pfn_algorithm": "identity",
+                        "is_deterministic": True,
+                        "prefix": "/storage/rse",
+                        "exclude_prefixes": ["/storage/rse/excluded"],
+                    }
+                },
+                f,
+            )
+
+        parser = SiteDumpParser(dump_path, "TEST_RSE", config_path)
+        valid, unknown = parser.parse()
+
+        self.assertEqual(len(valid), 1)
+        self.assertEqual(len(unknown), 0)
+        self.assertEqual(parser.outside_prefix_count, 2)
+        self.assertEqual(parser.outside_prefix_bytes, 500)
+
     def test_site_dump_parser_gzip_file(self):
         dump_content = (
             "/cephfs/grid/dune/ehn1-beam-np02/be/7e/"

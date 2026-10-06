@@ -22,6 +22,7 @@ class TestDiscoverNewDump(unittest.TestCase):
             with open(path, "w") as f:
                 f.write("RSE_A https://example.invalid/dumps\n")
                 f.write("RSE_B https://example.invalid/latest gfal-downloads/RSE_B latest\n")
+                f.write("RSE_C https://example.invalid/shared gfal-downloads/RSE_C latest SHARED_KEY\n")
 
             configs = parse_config(path)
 
@@ -29,6 +30,7 @@ class TestDiscoverNewDump(unittest.TestCase):
         self.assertEqual(configs[0].mode, "list")
         self.assertEqual(configs[1].local_dir, "gfal-downloads/RSE_B")
         self.assertEqual(configs[1].mode, "latest")
+        self.assertEqual(configs[2].shared_source, "SHARED_KEY")
 
     def test_parse_gfal_ls_accepts_plain_and_long_listing(self):
         names = parse_gfal_ls(
@@ -76,6 +78,26 @@ class TestDiscoverNewDump(unittest.TestCase):
 
         self.assertEqual(info.run_date, "20260819")
         self.assertEqual(info.local_path, "gfal-downloads/RAL_ECHO/dump_20260819")
+
+    def test_shared_source_uses_shared_raw_local_path(self):
+        config = RSEConfig(
+            "DUNE_CERN_EOS",
+            "https://example.invalid/dump_latest",
+            "gfal-downloads/DUNE_CERN_EOS",
+            "latest",
+            "CERN_NEUTPLATFORM",
+        )
+        with mock.patch(
+            "src.discover_new_dump.run_command",
+            return_value="Size: 100\nCreated: 2026-08-19 03:12:00\n",
+        ):
+            info = inspect_remote_file(config, config.remote_url, "dump_latest")
+
+        self.assertEqual(info.local_path, "gfal-downloads/DUNE_CERN_EOS/dump_20260819")
+        self.assertEqual(
+            info.source_local_path,
+            "gfal-downloads/_shared/CERN_NEUTPLATFORM/dump_20260819",
+        )
 
     def test_is_new_dump_compares_remote_metadata(self):
         config = RSEConfig("RSE_A", "https://example.invalid/dumps", "gfal-downloads/RSE_A", "list")

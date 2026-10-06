@@ -22,6 +22,7 @@ class RSEConfig:
     remote_url: str
     local_dir: str
     mode: str
+    shared_source: Optional[str] = None
 
 
 @dataclass
@@ -37,6 +38,7 @@ class DumpInfo:
     size: Optional[int]
     created_at: Optional[str]
     modified_at: Optional[str]
+    source_local_path: Optional[str] = None
 
 
 def parse_config(path):
@@ -54,9 +56,10 @@ def parse_config(path):
             remote_url = parts[1]
             local_dir = parts[2] if len(parts) >= 3 else os.path.join("gfal-downloads", rse)
             mode = parts[3] if len(parts) >= 4 else infer_mode(remote_url)
+            shared_source = parts[4] if len(parts) >= 5 else None
             if mode not in ("list", "latest"):
                 raise ValueError(f"{path}:{lineno}: unsupported mode: {mode}")
-            configs.append(RSEConfig(rse, remote_url, local_dir, mode))
+            configs.append(RSEConfig(rse, remote_url, local_dir, mode, shared_source))
     return configs
 
 
@@ -218,6 +221,9 @@ def inspect_remote_file(config, remote_path, basename):
         or datetime.now(CENTRAL_TZ).strftime("%Y%m%d")
     )
     name = local_name(config, basename, run_date)
+    source_local_path = None
+    if config.shared_source:
+        source_local_path = os.path.join("gfal-downloads", "_shared", config.shared_source, name)
     return DumpInfo(
         rse=config.rse,
         mode=config.mode,
@@ -230,6 +236,7 @@ def inspect_remote_file(config, remote_path, basename):
         size=size,
         created_at=created_at,
         modified_at=modified_at,
+        source_local_path=source_local_path,
     )
 
 

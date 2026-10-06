@@ -4,7 +4,7 @@ def _to_gb(value):
     return round(value / (1024.0 ** 3), 6) if value is not None else 0.0
 
 
-def compare_summary_only(catalog_data, site_entries, rse=None, timestamp=None):
+def compare_summary_only(catalog_data, site_entries, rse=None, timestamp=None, site_stats_provider=None):
     """
     Computes the same top-level stats as the full comparator while streaming
     site dump entries and avoiding detailed discrepancy lists.
@@ -96,6 +96,10 @@ def compare_summary_only(catalog_data, site_entries, rse=None, timestamp=None):
 
     total_site_total_count = len(site_keys) + total_site_unknown_count
     percentage_site_known_files = (len(site_keys) / total_site_total_count * 100) if total_site_total_count > 0 else 100.0
+    if site_stats_provider:
+        site_outside_prefix_count, site_outside_prefix_bytes = site_stats_provider()
+    else:
+        site_outside_prefix_count, site_outside_prefix_bytes = 0, 0
 
     return {
         '@timestamp': timestamp,
@@ -107,6 +111,8 @@ def compare_summary_only(catalog_data, site_entries, rse=None, timestamp=None):
             'total_site_valid_size_GB': _to_gb(total_site_bytes),
             'total_site_unknown_file_count': total_site_unknown_count,
             'total_site_unknown_size_GB': _to_gb(total_site_unknown_bytes),
+            'total_site_outside_prefix_file_count': site_outside_prefix_count,
+            'total_site_outside_prefix_size_GB': _to_gb(site_outside_prefix_bytes),
             'total_dark_file_count': len(dark_first_bytes),
             'total_dark_size_GB': _to_gb(total_dark_bytes),
             'total_missing_file_count': total_missing_count,
@@ -125,7 +131,7 @@ def compare_summary_only(catalog_data, site_entries, rse=None, timestamp=None):
 
 
 class ConsistencyComparator:
-    def __init__(self, catalog_data, valid_site_replicas, unknown_site_files):
+    def __init__(self, catalog_data, valid_site_replicas, unknown_site_files, site_outside_prefix_count=0, site_outside_prefix_bytes=0):
         """
         :param catalog_data: dict {(scope, name): {'bytes': size, 'adler32': adler32, 'datasets': [...]}}
         :param valid_site_replicas: list of dicts {'scope': scope, 'name': name, 'path': path, 'bytes': bytes, 'adler32': adler32}
@@ -134,6 +140,8 @@ class ConsistencyComparator:
         self.catalog_data = catalog_data
         self.valid_site_replicas = valid_site_replicas
         self.unknown_site_files = unknown_site_files
+        self.site_outside_prefix_count = site_outside_prefix_count
+        self.site_outside_prefix_bytes = site_outside_prefix_bytes
 
     def compare(self, rse=None, timestamp=None):
         """
@@ -305,6 +313,8 @@ class ConsistencyComparator:
                 'total_site_valid_size_GB': _to_gb(total_site_bytes),
                 'total_site_unknown_file_count': total_site_unknown_count,
                 'total_site_unknown_size_GB': _to_gb(total_site_unknown_bytes),
+                'total_site_outside_prefix_file_count': self.site_outside_prefix_count,
+                'total_site_outside_prefix_size_GB': _to_gb(self.site_outside_prefix_bytes),
                 'total_dark_file_count': len(dark_files),
                 'total_dark_size_GB': _to_gb(total_dark_bytes),
                 'total_missing_file_count': total_missing_count,

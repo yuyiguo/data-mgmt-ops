@@ -16,6 +16,7 @@ class TestLandscapeOtlpExport(unittest.TestCase):
             "stats": {
                 "total_catalog_file_count": 2,
                 "total_site_unknown_size_GB": 12.5,
+                "total_site_outside_prefix_file_count": 3,
                 "catalog_present_files": 50.0,
             },
         }
@@ -33,12 +34,14 @@ class TestLandscapeOtlpExport(unittest.TestCase):
         self.assertEqual(metrics[1]["name"], "dune_rucio_site_unknown_size_gb")
         self.assertEqual(metrics[1]["unit"], "")
         self.assertEqual(metrics[1]["gauge"]["dataPoints"][0]["asDouble"], 12.5)
-        self.assertEqual(metrics[2]["name"], "dune_rucio_catalog_present_files_percent")
-        self.assertEqual(metrics[2]["unit"], "")
-        self.assertEqual(metrics[2]["gauge"]["dataPoints"][0]["asDouble"], 50.0)
-        self.assertEqual(metrics[3]["name"], "dune_rucio_dump_timestamp_seconds")
+        self.assertEqual(metrics[2]["name"], "dune_rucio_site_outside_prefix_files_total")
+        self.assertEqual(metrics[2]["gauge"]["dataPoints"][0]["asInt"], "3")
+        self.assertEqual(metrics[3]["name"], "dune_rucio_catalog_present_files_percent")
         self.assertEqual(metrics[3]["unit"], "")
-        self.assertEqual(metrics[3]["gauge"]["dataPoints"][0]["asInt"], "1785166970")
+        self.assertEqual(metrics[3]["gauge"]["dataPoints"][0]["asDouble"], 50.0)
+        self.assertEqual(metrics[4]["name"], "dune_rucio_dump_timestamp_seconds")
+        self.assertEqual(metrics[4]["unit"], "")
+        self.assertEqual(metrics[4]["gauge"]["dataPoints"][0]["asInt"], "1785166970")
 
     def test_metric_payload_accepts_dump_timestamp_override(self):
         summary = {
